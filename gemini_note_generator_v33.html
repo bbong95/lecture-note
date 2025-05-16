@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini API 기반 영어 수업노트 생성기 (3종 세트) ✍️</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/docx@7.1.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/Paperlogy.css" type="text/css"/>
+
+    <style>
+        /* Paperlogy 폰트 로드 */
+        /* CDN link in <head> is now used, so @font-face here is not strictly necessary unless for fallback or specific weights */
+
+        /* 전역 폰트 및 기본 스타일 */
+        html, body {
+            font-family: 'Paperlogy', 'Noto Sans KR', 'Malgun Gothic', sans-serif; 
+            padding: 20px;
+            background-color: #fdfaef; /* 부드러운 종이 질감 배경 */
+            color: #4a3f35; /* 짙은 갈색 텍스트 */
+            font-size: 16px; 
+            line-height: 1.65; 
+        }
+        .container {
+            background-color: #fffaf0; 
+            padding: 35px;
+            border-radius: 12px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08); 
+            border: 1px solid #eee0c4; 
+        }
+        .app-title {
+            font-size: 2.8rem; 
+            font-weight: normal; 
+            color: #5d4037; 
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .app-title .emoji {
+            font-size: 3rem;
+            margin-left: 10px;
+        }
+
+        /* 컨트롤 섹션 스타일 */
+        .controls {
+            margin-bottom: 25px;
+            padding: 25px; 
+            background-color: #fff5e6; 
+            border-radius: 8px;
+            border: 1px solid #f0e0c8;
+        }
+        .controls h3 {
+            font-size: 1.6rem; 
+            font-weight: normal;
+            color: #6d4c41; 
+            margin-bottom: 18px; 
+        }
+        .controls .input-group-text {
+            background-color: #f5eadd;
+            border-color: #e0d0b8;
+            font-weight: normal; 
+            color: #5d4037;
+            font-size: 1rem; 
+        }
+        .controls .form-control, .controls .form-select {
+            border-radius: 6px;
+            border-color: #d7c6a9;
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif; 
+            font-size: 1rem; 
+        }
+        .controls .form-control::placeholder {
+            color: #9a8a7a;
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif;
+        }
+        .controls .btn-outline-secondary {
+            border-color: #8d6e63; 
+            color: #8d6e63;
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif;
+        }
+        .controls .btn-outline-secondary:hover {
+            background-color: #8d6e63;
+            color: white;
+        }
+        
+        /* 버튼 스타일 */
+        .btn {
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif; 
+            font-weight: normal; 
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 1.1rem; 
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.1s ease;
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        .btn-primary {
+            background-color: #795548; 
+            border-color: #795548;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background-color: #5d4037;
+            border-color: #5d4037;
+            color: #fff;
+        }
+        .btn-info {
+            background-color: #a1887f; 
+            border-color: #a1887f;
+            color: #fff;
+        }
+        .btn-info:hover {
+            background-color: #8d6e63;
+            border-color: #8d6e63;
+            color: #fff;
+        }
+        .btn-success {
+            background-color: #8bc34a; 
+            border-color: #8bc34a;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background-color: #7cb342;
+            border-color: #7cb342;
+            color: #fff;
+        }
+
+        /* 미리보기 컨테이너 */
+        .preview-container-wrapper { 
+            border: 1px solid #e0d0b8;
+            padding: 25px;
+            margin-top: 0; 
+            background-color: #fffdf9; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-radius: 0 0 8px 8px; 
+        }
+        .note-header {
+            text-align: center;
+            margin-bottom: 30px; 
+            font-weight: normal; 
+            font-size: 2.1rem; 
+            color: #5d4037; 
+        }
+
+        /* 섹션 스타일 */
+        .section { 
+            border: 1px solid #f0e0c8; 
+            padding: 20px; 
+            margin-bottom: 15px;
+            border-radius: 8px; 
+            background-color: #fffef7; 
+            cursor: grab; 
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        .section:hover {
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        }
+        .section-title {
+            font-weight: normal; 
+            margin-bottom: 12px; 
+            color: #795548; 
+            font-size: 1.5em; 
+            border-bottom: 2px solid #f5eadd;
+            padding-bottom: 8px;
+        }
+        .section-title .emoji {
+            margin-right: 8px;
+        }
+
+        .export-buttons-group {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #f0e0c8;
+            display: flex;
+            flex-wrap: wrap; 
+            gap: 12px;
+            justify-content: flex-end; 
+        }
+        
+        /* 로딩 인디케이터 */
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+            font-size: 1.3rem; 
+            color: #776b5d;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 3rem; 
+            height: 3rem; 
+            border: 0.35rem solid #f5eadd; 
+            border-top: 0.35rem solid #795548; 
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 15px; 
+            vertical-align: middle;
+        }
+        /* 파일명 표시 */
+        #fileNameDisplay {
+            margin-left: 10px;
+            font-style: normal; 
+            color: #776b5d;
+            font-size: 1.05rem; 
+        }
+        /* 인라인 라벨 */
+        .form-label-inline, label { 
+            margin-bottom: 0;
+            margin-right: 0.5rem;
+            align-self: center;
+            font-weight: normal; 
+            font-size: 1.1rem; 
+            color: #6d4c41;
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif;
+        }
+        /* 작은 텍스트 (설명 등) */
+        small, .form-text {
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif;
+            font-size: 1rem; 
+            color: #8d6e63; 
+        }
+        
+        /* 탭 스타일 */
+        .nav-tabs .nav-link {
+            font-weight: normal; 
+            color: #795548;
+            border-radius: 6px 6px 0 0;
+            padding: 10px 20px;
+            font-size: 1.2rem; 
+            border-bottom-width: 2px;
+        }
+        .nav-tabs .nav-link.active {
+            color: #ffffff;
+            background-color: #795548;
+            border-color: #795548 #795548 #fffaf0;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: #f0e0c8 #f0e0c8 #fff5e6;
+            background-color: #fff5e6;
+            color: #5d4037;
+        }
+
+        /* 에디터 플레이스홀더 및 콘텐츠 영역 */
+        .editor-content-placeholder { /* Quill 에디터가 될 div의 기본 스타일 */
+             min-height: 180px; 
+             border: 1px solid #d7c6a9; 
+             padding: 10px;
+             border-radius: 6px;
+             background-color: #fffdf9;
+             font-family: 'Paperlogy', 'Noto Sans KR', sans-serif; 
+             line-height: 1.75; 
+             font-size: 1.05rem; 
+        }
+        /* Question 1, 2는 Quill 에디터가 아님 */
+        #question1Content, #question2Content { 
+             min-height: 180px; 
+             border: 1px solid #d7c6a9; 
+             padding: 10px;
+             border-radius: 6px;
+             background-color: #fffdf9;
+             font-family: 'Paperlogy', 'Noto Sans KR', sans-serif; 
+             line-height: 1.75; 
+             font-size: 1.05rem; 
+        }
+         /* type2LiteralTranslationContent 와 literalTableContent 는 Quill 에디터로 초기화되므로, .editor-content-placeholder 스타일이 적용됨 */
+        #type2LiteralTranslationContent.editor-content-placeholder,
+        #literalTableContent.editor-content-placeholder {
+            /* 이미 .editor-content-placeholder에 정의된 스타일 사용 */
+        }
+
+
+        /* Quill 에디터 툴바 및 컨테이너 */
+        .ql-toolbar.ql-snow {
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            border-bottom: 0px;
+            background-color: #f5eadd;
+            border-color: #d7c6a9;
+        }
+        .ql-container.ql-snow {
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            border-color: #d7c6a9;
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif; 
+        }
+        .ql-editor {
+            line-height: 1.75; 
+            font-size: 1.05rem; 
+            min-height: 180px; /* Quill 에디터 최소 높이 보장 */
+        }
+        .ql-editor.ql-blank::before { 
+            font-family: 'Paperlogy', 'Noto Sans KR', sans-serif;
+            color: #9a8a7a;
+            font-style: normal;
+        }
+
+
+        /* Quill Font Styles - Paperlogy 추가 */
+        .ql-font-paperlogy { font-family: 'Paperlogy', sans-serif; } 
+        .ql-font-arial { font-family: Arial, Helvetica, sans-serif; }
+        .ql-font-comic-sans { font-family: "Comic Sans MS", cursive, sans-serif; }
+        .ql-font-courier-new { font-family: "Courier New", Courier, monospace; }
+        .ql-font-georgia { font-family: Georgia, serif; }
+        .ql-font-helvetica { font-family: Helvetica, Arial, sans-serif; } 
+        .ql-font-lucida-grande { font-family: "Lucida Sans Unicode", "Lucida Grande", Verdana, sans-serif; } 
+        .ql-font-tahoma { font-family: Tahoma, Geneva, sans-serif; }
+        .ql-font-times-new-roman { font-family: "Times New Roman", Times, serif; }
+        .ql-font-trebuchet-ms { font-family: "Trebuchet MS", Helvetica, sans-serif; }
+        .ql-font-verdana { font-family: Verdana, Geneva, sans-serif; }
+        .ql-font-malgun-gothic { font-family: "Malgun Gothic", "맑은 고딕", Dotum, Gulim, AppleSDGothicNeo-Regular, sans-serif; }
+        .ql-font-dotum { font-family: Dotum, "돋움", Gulim, "굴림", AppleGothic, sans-serif; }
+        .ql-font-gulim { font-family: Gulim, "굴림", Dotum, "돋움", AppleGothic, sans-serif; }
+        .ql-font-batang { font-family: Batang, "바탕", Gungsuh, "궁서", AppleMyungjo, serif; }
+        .ql-font-gungsuh { font-family: Gungsuh, "궁서", Batang, "바탕", AppleMyungjo, serif; }
+        .ql-font-my-custom-font { font-family: "My Custom Font", sans-serif; }
+
+        /* Quill Picker Styles - Paperlogy 추가 */
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="paperlogy"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="paperlogy"]::before { content: "Paperlogy"; font-family: 'Paperlogy', sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="arial"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="arial"]::before { content: "Arial"; font-family: Arial, Helvetica, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="comic-sans"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="comic-sans"]::before { content: "Comic Sans"; font-family: "Comic Sans MS", cursive, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="courier-new"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="courier-new"]::before { content: "Courier New"; font-family: "Courier New", Courier, monospace; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="georgia"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="georgia"]::before { content: "Georgia"; font-family: Georgia, serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="helvetica"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="helvetica"]::before { content: "Helvetica"; font-family: Helvetica, Arial, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="lucida-grande"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="lucida-grande"]::before { content: "Lucida Grande"; font-family: "Lucida Sans Unicode", "Lucida Grande", Verdana, sans-serif;}
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="tahoma"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="tahoma"]::before { content: "Tahoma"; font-family: Tahoma, Geneva, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="times-new-roman"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="times-new-roman"]::before { content: "Times New Roman"; font-family: "Times New Roman", Times, serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="trebuchet-ms"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="trebuchet-ms"]::before { content: "Trebuchet MS"; font-family: "Trebuchet MS", Helvetica, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="verdana"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="verdana"]::before { content: "Verdana"; font-family: Verdana, Geneva, sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="malgun-gothic"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="malgun-gothic"]::before { content: "맑은 고딕"; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="dotum"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="dotum"]::before { content: "돋움"; font-family: Dotum, "돋움", sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="gulim"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="gulim"]::before { content: "굴림"; font-family: Gulim, "굴림", sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="batang"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="batang"]::before { content: "바탕"; font-family: Batang, "바탕", serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="gungsuh"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="gungsuh"]::before { content: "궁서"; font-family: Gungsuh, "궁서", serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="my-custom-font"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="my-custom-font"]::before { content: "나의 폰트"; font-family: "My Custom Font", sans-serif; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item::before { content: attr(data-value); }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="sans-serif"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="sans-serif"]::before { content: "Sans Serif"; font-family: sans-serif;}
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="serif"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="serif"]::before { content: "Serif"; font-family: serif;}
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before { content: "Monospace"; font-family: monospace;}
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media print {
+            .controls, button, .input-section, .api-section { display: none; }
+            .preview-container-wrapper { border: none; box-shadow: none; }
+            .nav-tabs { display: none; }
+            .ql-toolbar { display: none !important; }
+            .ql-container { border: none !important; }
+            .ql-editor { padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="app-title">Gemini API 영어 수업노트 생성기 <span class="emoji">✍️</span></h1>
+        
+        <div class="controls api-section">
+            <h3><span class="emoji">🔑</span> API 설정</h3>
+            <div class="input-group mb-3">
+                <span class="input-group-text">Google Gemini API Key</span>
+                <input type="text" id="apiKey" class="form-control" placeholder="여기에 Gemini API 키를 입력하세요">
+                <button id="saveApiKey" class="btn btn-outline-secondary">저장</button>
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="rememberApiKey">
+                <label class="form-check-label" for="rememberApiKey">
+                    Gemini API 키 기억하기
+                </label>
+            </div>
+        </div>
+            
+        <div class="controls input-section">
+            <h3><span class="emoji">📤</span> 영어 지문 파일 업로드 (TXT, DOCX)</h3>
+            <div class="input-group">
+                <input type="file" id="fileInput" class="form-control" accept=".txt,.docx,.pdf">
+                <span id="fileNameDisplay" class="align-self-center"></span>
+            </div>
+             <small class="form-text text-muted">TXT 또는 DOCX 파일을 업로드해주세요. PDF 파일은 현재 지원되지 않습니다.</small>
+            
+            <div class="row mt-3 align-items-center"> 
+                <div class="col-lg col-md-6 mb-2 selector-group">
+                    <label for="unitSelector" class="form-label-inline">UNIT:</label>
+                    <select id="unitSelector" class="form-select" style="width: auto; flex-grow: 1;">
+                        <option value="all">전체 지문</option>
+                    </select>
+                </div>
+                <div class="col-lg col-md-6 mb-2 selector-group">
+                    <label for="sectionSelector" class="form-label-inline">문단:</label>
+                    <select id="sectionSelector" class="form-select" style="width: auto; flex-grow: 1;">
+                        <option value="unit_full_content">UNIT 전체 내용</option>
+                    </select>
+                </div>
+                <div class="col-lg col-md-6 mb-2 selector-group">
+                    <label for="paragraphSelector" class="form-label-inline">단락:</label>
+                    <select id="paragraphSelector" class="form-select" style="width: auto; flex-grow: 1;">
+                        <option value="section_full_content">문단 전체 보기</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3"> 
+                 <div class="col-md-12">
+                    <button id="generateButton" class="btn btn-primary btn-lg w-100"><span class="emoji">💡</span> 수업노트 생성 및 편집기 로드</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <span>AI가 수업노트를 생성하고 있습니다... 잠시만 기다려주세요.</span>
+        </div>
+
+        <ul class="nav nav-tabs mt-4" id="noteTypeTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="type1-tab" data-bs-toggle="tab" data-bs-target="#type1-content" type="button" role="tab" aria-controls="type1-content" aria-selected="true"><span class="emoji">🇬🇧</span> 1종: 영어 지문만</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="type2-tab" data-bs-toggle="tab" data-bs-target="#type2-content" type="button" role="tab" aria-controls="type2-content" aria-selected="false"><span class="emoji">📖</span> 2종: 한줄 해석</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="type3-tab" data-bs-toggle="tab" data-bs-target="#type3-content" type="button" role="tab" aria-controls="type3-content" aria-selected="false"><span class="emoji">📚</span> 3종: 전체 구성</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="noteTypeTabContent">
+            <div class="tab-pane fade show active" id="type1-content" role="tabpanel" aria-labelledby="type1-tab">
+                <div class="preview-container-wrapper">
+                    <div class="note-header">수업 노트 (1종: 영어 지문만)</div>
+                    <div class="section">
+                        <div class="section-title"><span class="emoji">🇬🇧</span> 영어 지문</div>
+                        <div class="content editor-content-placeholder" id="type1EnglishPassageContent"></div>
+                    </div>
+                    <div class="export-buttons-group">
+                        <button id="exportGoogleDocsType1" class="btn btn-info"><span class="emoji">📄</span> Google Docs</button>
+                        <button id="exportButtonType1" class="btn btn-success"><span class="emoji">💾</span> MS-WORD</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="type2-content" role="tabpanel" aria-labelledby="type2-tab">
+                 <div class="preview-container-wrapper">
+                    <div class="note-header">수업 노트 (2종: 한줄 해석)</div>
+                    <div class="section">
+                        <div class="section-title"><span class="emoji">🗣️</span> 한줄 해석 (영어 원문 + 직역)</div>
+                        <div class="content editor-content-placeholder" id="type2LiteralTranslationContent"> 
+                            <p class="text-muted">수업노트 생성 후 여기에 한줄 해석 내용이 표시됩니다.</p>
+                        </div>
+                    </div>
+                    <div class="export-buttons-group">
+                        <button id="exportGoogleDocsType2" class="btn btn-info"><span class="emoji">📄</span> Google Docs</button>
+                        <button id="exportButtonType2" class="btn btn-success"><span class="emoji">💾</span> MS-WORD</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="type3-content" role="tabpanel" aria-labelledby="type3-tab">
+                <div class="preview-container-wrapper">
+                    <div class="note-header">수업 노트 (전체 구성)</div>
+                    <div class="row">
+                        <div class="col-md-6 column-left draggable-container">
+                            <div class="section" id="englishPassageSection" draggable="true">
+                                <div class="section-title"><span class="emoji">🇬🇧</span> 영어 지문 (선택된 내용)</div>
+                                <div class="content editor-content-placeholder" id="englishPassageContent"></div>
+                            </div>
+                            <div class="section" id="koreanInterpretationSection" draggable="true">
+                                <div class="section-title"><span class="emoji">🇰🇷</span> 한국어 의역</div>
+                                <div class="content editor-content-placeholder" id="koreanInterpretationContent"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 column-right draggable-container">
+                            <div class="section" id="topicEnglishSection" draggable="true">
+                                <div class="section-title"><span class="emoji">💡</span> 주제 (영어)</div>
+                                <div class="content editor-content-placeholder" id="topicEnglishContent"></div>
+                            </div>
+                            <div class="section" id="topicKoreanSection" draggable="true">
+                                <div class="section-title"><span class="emoji">💡</span> 주제 (한국어)</div>
+                                <div class="content editor-content-placeholder" id="topicKoreanContent"></div>
+                            </div>
+                            <div class="section" id="question1Section" draggable="true">
+                                <div class="section-title"><span class="emoji">❓</span> Question 1</div>
+                                <div class="content" id="question1Content"></div>
+                            </div>
+                            <div class="section" id="question2Section" draggable="true">
+                                <div class="section-title"><span class="emoji">❓</span> Question 2</div>
+                                <div class="content" id="question2Content"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section full-width-section draggable-container" id="literalTableFullSection" draggable="true">
+                        <div class="section-title"><span class="emoji">🗣️</span> 직역 (Literal Translation)</div>
+                        <div class="content editor-content-placeholder" id="literalTableContent"></div> 
+                    </div>
+                    <div class="section full-width-section draggable-container" id="englishOnlyFullSection" draggable="true">
+                        <div class="section-title"><span class="emoji">🇬🇧</span> 영어 지문만 (선택된 내용)</div>
+                        <div class="content editor-content-placeholder" id="englishOnlyContent"></div>
+                    </div>
+                    <div class="export-buttons-group">
+                        <button id="exportGoogleDocsType3" class="btn btn-info"><span class="emoji">📄</span> Google Docs</button>
+                        <button id="exportButtonType3" class="btn btn-success"><span class="emoji">💾</span> MS-WORD</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // 전역 변수
+    window.uploadedEnglishText = ""; 
+    let parsedUnits = []; 
+    const GRAMMAR_TITLE_REGEX = /^\s*GRAMMAR\s+for\s+Reading\s*$/i; 
+    const READING_TITLE_REGEX = /^\s*수능\s+유형\s+독해\s*$/i; 
+    const PARAGRAPH_MARKER_REGEX = /^\s*(모의고사\s+기출|기출\s*Preview|(\d+))\s*\.?\s*/i; 
+    const SUNEUNG_GICHO_REGEX = /^\s*수능\s+기초/i; 
+    let activeQuillEditors = {}; 
+    
+    const ALL_QUILL_EDITOR_IDS = [
+        'type1EnglishPassageContent',
+        'type2LiteralTranslationContent', 
+        'englishPassageContent',
+        'koreanInterpretationContent',
+        'topicEnglishContent',
+        'topicKoreanContent',
+        'literalTableContent',         
+        'englishOnlyContent'
+    ];
+    const NON_QUILL_CONTENT_IDS = ['question1Content', 'question2Content'];
+    const EDITOR_ID_TYPE1 = 'type1EnglishPassageContent'; // 명시적으로 유지 (가독성 및 혹시 모를 참조 대비)
+
+
+    const QUILL_FONT_WHITELIST = [
+        'paperlogy', 
+        'sans-serif', 'serif', 'monospace', 
+        'arial', 'comic-sans', 'courier-new', 'georgia', 'helvetica', 'lucida-grande', 'tahoma', 'times-new-roman', 'trebuchet-ms', 'verdana',
+        'malgun-gothic', 'dotum', 'gulim', 'batang', 'gungsuh',
+        'my-custom-font' 
+    ];
+
+    function registerQuillFonts() {
+        if (typeof Quill !== 'undefined') {
+            let Font = Quill.import('formats/font');
+            Font.whitelist = QUILL_FONT_WHITELIST; 
+            Quill.register(Font, true);
+            console.log("Quill Fonts registered globally with whitelist:", Font.whitelist);
+        } else {
+            console.error("Quill is not loaded when trying to register fonts globally. Will try again on DOMContentLoaded.");
+        }
+    }
+    if (typeof Quill !== 'undefined') {
+        registerQuillFonts();
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM fully loaded. Quill object:", typeof Quill); 
+        if (typeof Quill !== 'undefined' && Quill.import('formats/font') && !(Quill.import('formats/font')).whitelist.includes('paperlogy')) {
+            registerQuillFonts();
+        }
+
+        const generateButton = document.getElementById('generateButton');
+        const apiKeyInput = document.getElementById('apiKey');
+        const saveApiKeyButton = document.getElementById('saveApiKey');
+        const rememberApiKeyCheckbox = document.getElementById('rememberApiKey');
+        
+        const loadingElement = document.querySelector('.loading');
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const unitSelector = document.getElementById('unitSelector');
+        const sectionSelector = document.getElementById('sectionSelector');
+        const paragraphSelector = document.getElementById('paragraphSelector');
+        
+        if (localStorage.getItem('geminiApiKey')) {
+            apiKeyInput.value = localStorage.getItem('geminiApiKey');
+            rememberApiKeyCheckbox.checked = true;
+        }
+        saveApiKeyButton.addEventListener('click', function() {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                if (rememberApiKeyCheckbox.checked) { localStorage.setItem('geminiApiKey', apiKey); } 
+                else { localStorage.removeItem('geminiApiKey'); }
+                alert('Gemini API 키가 저장되었습니다.');
+            } else { alert('Gemini API 키를 입력해주세요.'); }
+        });
+        
+        function initQuillEditor(elementId, initialContent = '') {
+            const targetElement = document.getElementById(elementId);
+            if (!targetElement) {
+                console.error(`Quill target element with ID '${elementId}' not found.`);
+                return;
+            }
+            if (NON_QUILL_CONTENT_IDS.includes(elementId)) {
+                console.log(`Skipping Quill initialization for non-Quill element ${elementId}, using innerHTML directly.`);
+                targetElement.innerHTML = initialContent;
+                targetElement.classList.remove('editor-content-placeholder');
+                return;
+            }
+
+            if (typeof Quill === 'undefined') {
+                console.error('Quill.js is not loaded. Cannot initialize editor for:', elementId);
+                targetElement.innerHTML = initialContent || '<p>편집기를 로드할 수 없습니다.</p>';
+                return;
+            }
+
+            if (activeQuillEditors[elementId] && typeof activeQuillEditors[elementId].destroy === 'function') {
+                console.log(`Destroying existing Quill instance for ${elementId} before re-initializing.`);
+                try {
+                    activeQuillEditors[elementId].destroy();
+                } catch (e) {
+                    console.error(`Error destroying Quill for ${elementId}:`, e);
+                }
+                delete activeQuillEditors[elementId];
+            }
+
+            const previousToolbar = targetElement.previousElementSibling;
+            if (previousToolbar && previousToolbar.classList.contains('ql-toolbar')) {
+                previousToolbar.remove();
+            }
+            targetElement.classList.remove('ql-container', 'ql-snow');
+            while (targetElement.firstChild) {
+                targetElement.removeChild(targetElement.firstChild);
+            }
+            targetElement.classList.remove('editor-content-placeholder'); 
+
+            const quill = new Quill(targetElement, {
+                modules: {
+                    toolbar: [ 
+                        [{ 'font': QUILL_FONT_WHITELIST }, { 'size': ['small', false, 'large', 'huge'] }], 
+                        ['bold', 'italic', 'underline', 'strike'],        
+                        [{ 'color': [] }, { 'background': [] }],          
+                        [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'], 
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }], 
+                        [{ 'script': 'sub'}, { 'script': 'super' }],      
+                        [{ 'align': [] }],                                 
+                        ['link', 'image', 'video'],                       
+                        ['clean']                                         
+                    ]
+                },
+                placeholder: '여기에 내용을 입력하거나 생성된 콘텐츠가 표시됩니다...',
+                theme: 'snow' 
+            });
+            if (initialContent) { 
+                 quill.root.innerHTML = initialContent; 
+            }
+            activeQuillEditors[elementId] = quill; 
+            console.log(`Quill editor initialized for ${elementId}`);
+        }
+
+        async function destroyQuillEditors() {
+            console.log("Attempting to destroy all Quill editors and clear content divs. Current active editors:", Object.keys(activeQuillEditors));
+            
+            const allEditableDivIds = [...ALL_QUILL_EDITOR_IDS, ...NON_QUILL_CONTENT_IDS];
+
+            for (const editorId of allEditableDivIds) {
+                const editorDiv = document.getElementById(editorId);
+                if (!editorDiv) continue;
+
+                if (ALL_QUILL_EDITOR_IDS.includes(editorId) && activeQuillEditors[editorId] && typeof activeQuillEditors[editorId].destroy === 'function') {
+                    try {
+                        console.log(`Destroying Quill editor for ${editorId}`);
+                        await activeQuillEditors[editorId].destroy();
+                        console.log(`Quill editor for ${editorId} destroyed.`);
+                    } catch (error) {
+                        console.error(`Error destroying Quill editor for ${editorId}:`, error);
+                    }
+                }
+                
+                const toolbar = editorDiv.previousElementSibling;
+                if (toolbar && toolbar.classList.contains('ql-toolbar')) {
+                    toolbar.remove();
+                }
+                editorDiv.innerHTML = ''; 
+                editorDiv.classList.remove('ql-container', 'ql-snow'); 
+                
+                if (ALL_QUILL_EDITOR_IDS.includes(editorId)) {
+                    editorDiv.classList.add('editor-content-placeholder');
+                }
+            }
+            activeQuillEditors = {};
+            console.log("All Quill editors presumably destroyed and content divs cleared.");
+        }
+        
+        function parseSectionParagraphs(sectionFullText, sectionTypePrefix) {
+            const paragraphs = [];
+            if (!sectionFullText) return paragraphs;
+
+            const lines = sectionFullText.split('\n');
+            let currentParagraphContentBuffer = [];
+            let paragraphIndex = 0;
+            let isInsideParagraph = false;
+            let currentOriginalMarkerLine = null; 
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const lineTrimmed = line.trim();
+                const isSuneungGichoStart = SUNEUNG_GICHO_REGEX.test(lineTrimmed);
+                const isStandardParaStart = PARAGRAPH_MARKER_REGEX.test(lineTrimmed);
+                const isParagraphStartMarker = isSuneungGichoStart || isStandardParaStart;
+
+                if (isParagraphStartMarker) { 
+                    if (isInsideParagraph && currentParagraphContentBuffer.length > 0) { 
+                        const fullParaText = currentParagraphContentBuffer.join('\n').trim();
+                        if (fullParaText) {
+                            paragraphs.push({
+                                id: `${sectionTypePrefix}_p${paragraphIndex++}`,
+                                originalMarkerLine: currentOriginalMarkerLine, 
+                                text: fullParaText
+                            });
+                        }
+                    }
+                    currentParagraphContentBuffer = [line]; 
+                    currentOriginalMarkerLine = lineTrimmed; 
+                    isInsideParagraph = true;
+                } else if (isInsideParagraph) { 
+                    currentParagraphContentBuffer.push(line);
+                } else if (i === 0 && lineTrimmed && !isParagraphStartMarker && sectionTypePrefix === 'g') { 
+                    currentParagraphContentBuffer = [line];
+                    currentOriginalMarkerLine = lineTrimmed; 
+                    isInsideParagraph = true;
+                }
+            }
+
+            if (isInsideParagraph && currentParagraphContentBuffer.length > 0) {
+                const fullParaText = currentParagraphContentBuffer.join('\n').trim();
+                if (fullParaText) {
+                    paragraphs.push({
+                        id: `${sectionTypePrefix}_p${paragraphIndex++}`,
+                        originalMarkerLine: currentOriginalMarkerLine,
+                        text: fullParaText
+                    });
+                }
+            }
+            
+            if (paragraphs.length === 0 && sectionFullText.trim() && sectionTypePrefix === 'g') {
+                const linesOfSection = sectionFullText.split('\n');
+                const contentStartIndex = GRAMMAR_TITLE_REGEX.test(linesOfSection[0].trim()) ? 1 : 0; 
+                const actualContent = linesOfSection.slice(contentStartIndex).join('\n').trim();
+                if(actualContent) {
+                    paragraphs.push({
+                        id: `${sectionTypePrefix}_p_full`,
+                        originalMarkerLine: linesOfSection[contentStartIndex] ? linesOfSection[contentStartIndex].trim() : "문법 설명", 
+                        text: actualContent
+                    });
+                }
+            }
+            return paragraphs;
+        }
+
+        async function parseAndPopulateUnitsAndSections(fullText) { 
+            await destroyQuillEditors(); 
+            while (unitSelector.options.length > 1) { unitSelector.remove(1); }
+            sectionSelector.innerHTML = '<option value="unit_full_content">UNIT 전체 내용</option>';
+            paragraphSelector.innerHTML = '<option value="section_full_content">문단 전체 보기</option>';
+
+            parsedUnits = []; 
+            
+            ALL_QUILL_EDITOR_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.innerHTML = ''; 
+                    el.classList.add('editor-content-placeholder');
+                }
+            });
+            NON_QUILL_CONTENT_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerHTML = '';
+            });
+
+            const type2ContentEl = document.getElementById('type2LiteralTranslationContent');
+            if (type2ContentEl) { 
+                type2ContentEl.innerHTML = '<p class="text-muted">수업노트 생성 후 여기에 한줄 해석 내용이 표시됩니다.</p>';
+                if (!type2ContentEl.classList.contains('editor-content-placeholder')) {
+                    type2ContentEl.classList.add('editor-content-placeholder');
+                }
+            }
+
+
+            let currentUnitObject = null;
+            let collectingForSectionType = null; 
+            let currentSectionContentBuffer = []; 
+            const lines = fullText.split('\n');
+
+            const finalizeCollectedSection = (unitObj, sectionType, buffer) => {
+                if (unitObj && sectionType && buffer.length > 0) {
+                    const fullSectionTextWithTitle = buffer.join('\n').trim(); 
+                    if (fullSectionTextWithTitle) {
+                        const sectionTitle = buffer[0].trim(); 
+                        const paragraphs = parseSectionParagraphs(fullSectionTextWithTitle, sectionType.charAt(0)); 
+                        
+                        if (sectionType === 'grammar') {
+                            unitObj.grammarSection = { title: sectionTitle, fullText: fullSectionTextWithTitle, paragraphs: paragraphs };
+                        } else if (sectionType === 'reading') {
+                            unitObj.readingSection = { title: sectionTitle, fullText: fullSectionTextWithTitle, paragraphs: paragraphs };
+                        }
+                    }
+                }
+                currentSectionContentBuffer = []; 
+            };
+            
+            lines.forEach((line) => {
+                const unitHeaderMatch = line.match(/^UNIT\s+(\d+.*)/i); 
+                
+                if (unitHeaderMatch) { 
+                    if (currentUnitObject) { 
+                        finalizeCollectedSection(currentUnitObject, collectingForSectionType, currentSectionContentBuffer);
+                        currentUnitObject.unitContentWithoutTitle = currentUnitObject.unitContentWithoutTitle.join('\n').trim();
+                        parsedUnits.push(currentUnitObject);
+                    }
+                    currentUnitObject = {
+                        unitTitle: `UNIT ${unitHeaderMatch[1].trim()}`,
+                        unitContentWithoutTitle: [], 
+                        grammarSection: null, 
+                        readingSection: null,
+                    };
+                    unitSelector.add(new Option(currentUnitObject.unitTitle, currentUnitObject.unitTitle)); 
+                    collectingForSectionType = null; 
+                } else if (currentUnitObject) { 
+                    currentUnitObject.unitContentWithoutTitle.push(line); 
+
+                    if (GRAMMAR_TITLE_REGEX.test(line.trim())) { 
+                        finalizeCollectedSection(currentUnitObject, collectingForSectionType, currentSectionContentBuffer); 
+                        collectingForSectionType = 'grammar';
+                        currentSectionContentBuffer.push(line); 
+                    } else if (READING_TITLE_REGEX.test(line.trim())) { 
+                        finalizeCollectedSection(currentUnitObject, collectingForSectionType, currentSectionContentBuffer); 
+                        collectingForSectionType = 'reading';
+                        currentSectionContentBuffer.push(line); 
+                    } else if (collectingForSectionType) { 
+                        currentSectionContentBuffer.push(line);
+                    }
+                }
+            });
+
+            if (currentUnitObject) {
+                finalizeCollectedSection(currentUnitObject, collectingForSectionType, currentSectionContentBuffer);
+                currentUnitObject.unitContentWithoutTitle = currentUnitObject.unitContentWithoutTitle.join('\n').trim();
+                parsedUnits.push(currentUnitObject);
+            }
+            
+            if (parsedUnits.length > 0) {
+                unitSelector.value = parsedUnits[0].unitTitle; 
+                await updateSectionSelector(); 
+            } else { 
+                unitSelector.value = "all";
+                sectionSelector.disabled = true;
+                paragraphSelector.disabled = true;
+                if (fullText.trim() !== "") { 
+                     const initialContent = fullText.replace(/\n/g, '<br>');
+                     initQuillEditor('englishPassageContent', initialContent); 
+                     initQuillEditor(EDITOR_ID_TYPE1, initialContent);      
+                }
+            }
+        }
+        
+        async function updateSectionSelector() { 
+            const selectedUnitTitle = unitSelector.value;
+            sectionSelector.innerHTML = '<option value="unit_full_content">UNIT 전체 내용</option>';
+            paragraphSelector.innerHTML = '<option value="section_full_content">문단 전체 보기</option>';
+            sectionSelector.disabled = true;
+            paragraphSelector.disabled = true;
+
+            if (selectedUnitTitle === "all") { 
+                await displaySelectedContent(); 
+                return;
+            }
+
+            const selectedUnit = parsedUnits.find(unit => unit.unitTitle === selectedUnitTitle);
+            if (selectedUnit) {
+                sectionSelector.disabled = false;
+                if (selectedUnit.grammarSection) {
+                    sectionSelector.add(new Option(selectedUnit.grammarSection.title, "grammar"));
+                }
+                if (selectedUnit.readingSection) {
+                    sectionSelector.add(new Option(selectedUnit.readingSection.title, "reading"));
+                }
+                await updateParagraphSelector(); 
+            }
+        }
+
+        async function updateParagraphSelector() { 
+            const unitChoice = unitSelector.value;
+            const sectionChoice = sectionSelector.value;
+            paragraphSelector.innerHTML = '<option value="section_full_content">문단 전체 보기</option>';
+            paragraphSelector.disabled = true;
+
+            if (unitChoice === "all" || sectionChoice === "unit_full_content") { 
+                await displaySelectedContent();
+                return;
+            }
+
+            const selectedUnit = parsedUnits.find(unit => unit.unitTitle === unitChoice);
+            if (selectedUnit) {
+                let sectionData = null;
+                if (sectionChoice === "grammar" && selectedUnit.grammarSection) {
+                    sectionData = selectedUnit.grammarSection;
+                } else if (sectionChoice === "reading" && selectedUnit.readingSection) {
+                    sectionData = selectedUnit.readingSection;
+                }
+
+                if (sectionData && sectionData.paragraphs && sectionData.paragraphs.length > 0) {
+                    paragraphSelector.disabled = false;
+                    sectionData.paragraphs.forEach(para => {
+                        let optionText = "";
+                        const unitNumberMatch = unitChoice.match(/^UNIT\s*0*(\d+)/i);
+                        const currentUnitNumberStr = unitNumberMatch ? unitNumberMatch[1] : null;
+                        const isSpecialUnitForSuneungGicho = currentUnitNumberStr && ["2", "8", "10"].includes(currentUnitNumberStr);
+                        
+                        if (isSpecialUnitForSuneungGicho && sectionChoice === "reading" && para.originalMarkerLine && SUNEUNG_GICHO_REGEX.test(para.originalMarkerLine.trim())) {
+                            optionText = "수능 기초";
+                        } else {
+                            const markerMatch = para.originalMarkerLine ? para.originalMarkerLine.match(PARAGRAPH_MARKER_REGEX) : null;
+                            if (markerMatch) { 
+                                if (markerMatch[2]) { 
+                                    optionText = `문제 ${markerMatch[2].trim()}`;
+                                } else if (markerMatch[1].toLowerCase().includes("모의고사")) {
+                                    optionText = "모의고사 기출";
+                                } else if (markerMatch[1].toLowerCase().includes("기출 preview")) {
+                                    optionText = "기출 Preview";
+                                } else { 
+                                    const contentAfterMarker = para.text.substring(para.originalMarkerLine.length).trim();
+                                    optionText = (contentAfterMarker.substring(0, 30) + (contentAfterMarker.length > 30 ? "..." : "")).replace(/\n/g, ' ');
+                                }
+                            } else { 
+                                const contentPreview = (para.originalMarkerLine || para.text)
+                                                    .replace(GRAMMAR_TITLE_REGEX, '') 
+                                                    .replace(READING_TITLE_REGEX, '') 
+                                                    .trim().replace(/\n/g, ' ').substring(0,30);
+                                optionText = (contentPreview + ((para.originalMarkerLine || para.text).length > 30 ? "..." : ""));
+                            }
+                        }
+                        
+                        if (!optionText && para.text) { 
+                             const contentPreview = para.text.replace(/\n/g, ' ').substring(0,30);
+                             optionText = (contentPreview + (para.text.length > 30 ? "..." : ""));
+                        }
+                        if (!optionText.trim()) optionText = `항목 ${para.id.slice(-2)}`; 
+
+                        paragraphSelector.add(new Option(optionText.trim() || "내용 보기", para.id));
+                    });
+                }
+            }
+            await displaySelectedContent(); 
+        }
+
+        async function displaySelectedContent() { 
+            const unitChoice = unitSelector.value;
+            const sectionChoice = sectionSelector.value;
+            const paragraphChoice = paragraphSelector.value;
+            let displayText = "";
+            
+            if (unitChoice === "all") {
+                displayText = window.uploadedEnglishText;
+            } else {
+                const selectedUnit = parsedUnits.find(unit => unit.unitTitle === unitChoice);
+                if (selectedUnit) {
+                    if (sectionChoice === "unit_full_content") {
+                        displayText = selectedUnit.unitTitle + "\n" + selectedUnit.unitContentWithoutTitle;
+                    } else {
+                        let targetSection = null;
+                        if (sectionChoice === "grammar" && selectedUnit.grammarSection) {
+                            targetSection = selectedUnit.grammarSection;
+                        } else if (sectionChoice === "reading" && selectedUnit.readingSection) {
+                            targetSection = selectedUnit.readingSection;
+                        }
+
+                        if (targetSection) {
+                            if (paragraphChoice === "section_full_content" || !targetSection.paragraphs || targetSection.paragraphs.length === 0) {
+                                displayText = targetSection.fullText; 
+                            } else {
+                                const selectedPara = targetSection.paragraphs.find(p => p.id === paragraphChoice);
+                                displayText = selectedPara ? selectedPara.text : targetSection.fullText; 
+                            }
+                        } else { 
+                             displayText = selectedUnit.unitTitle + "\n" + selectedUnit.unitContentWithoutTitle;
+                        }
+                    }
+                } else {
+                    displayText = "선택된 유닛을 찾을 수 없습니다.";
+                }
+            }
+            
+            const formattedDisplayText = displayText.replace(/\n/g, '<br>'); 
+
+            initQuillEditor('englishPassageContent', formattedDisplayText);
+            initQuillEditor(EDITOR_ID_TYPE1, formattedDisplayText); 
+        }
+
+        fileInput.addEventListener('change', async function(event) { 
+            const file = event.target.files[0];
+            if (!file) { 
+                fileNameDisplay.textContent = ""; window.uploadedEnglishText = "";
+                await parseAndPopulateUnitsAndSections(""); 
+                return;
+            }
+            fileNameDisplay.textContent = `선택된 파일: ${file.name}`;
+            const reader = new FileReader();
+            const processTextFile = async (text) => { 
+                window.uploadedEnglishText = text;
+                await parseAndPopulateUnitsAndSections(text);
+            };
+
+            if (file.name.endsWith('.txt')) { 
+                reader.onload = async (e) => await processTextFile(e.target.result); 
+                reader.readAsText(file);
+            } else if (file.name.endsWith('.docx')) { 
+                reader.onload = (e) => {
+                    mammoth.extractRawText({ arrayBuffer: e.target.result })
+                        .then(async result => await processTextFile(result.value)) 
+                        .catch(async err => { 
+                            console.error("Error extracting DOCX:", err); 
+                            alert('DOCX 파일 처리 중 오류가 발생했습니다. 파일 형식이 올바르거나 손상되지 않았는지 확인해주세요. 또는 다른 파일로 시도해보세요. (콘솔에서 자세한 오류 확인 가능)');
+                            fileNameDisplay.textContent = ""; window.uploadedEnglishText = "";
+                            await parseAndPopulateUnitsAndSections(""); fileInput.value = null; 
+                        });
+                };
+                reader.readAsArrayBuffer(file);
+            } else { 
+                alert(file.name.endsWith('.pdf') ? 'PDF 파일 처리는 현재 지원되지 않습니다.' : '지원하지 않는 파일 형식입니다. TXT 또는 DOCX 파일을 업로드해주세요.');
+                fileNameDisplay.textContent = ""; window.uploadedEnglishText = "";
+                await parseAndPopulateUnitsAndSections(""); fileInput.value = null; 
+            }
+        });
+
+        unitSelector.addEventListener('change', updateSectionSelector);
+        sectionSelector.addEventListener('change', updateParagraphSelector);
+        paragraphSelector.addEventListener('change', displaySelectedContent);
+        
+        
+        generateButton.addEventListener('click', async function() { 
+            const apiKeyVal = apiKeyInput.value.trim();
+            const textForAPI = getCurrentTextForExport(); 
+            
+            if (!textForAPI || !textForAPI.trim()) {
+                alert('영어 지문이 포함된 파일을 업로드하고 UNIT/문단/단락을 선택해주세요.'); return;
+            }
+            if (!apiKeyVal) {
+                alert('Google Gemini API 키를 입력해주세요.'); return;
+            }
+            
+            loadingElement.style.display = 'block'; 
+            await destroyQuillEditors(); 
+
+            const formattedTextForAPI = textForAPI.replace(/\n/g, '<br>');
+            initQuillEditor('englishPassageContent', formattedTextForAPI); 
+            initQuillEditor(EDITOR_ID_TYPE1, formattedTextForAPI); 
+            
+            ALL_QUILL_EDITOR_IDS.forEach(id => {
+                if (id !== 'englishPassageContent' && id !== EDITOR_ID_TYPE1) { 
+                    const el = document.getElementById(id);
+                    if (el) {
+                         initQuillEditor(id, '<p>생성 중...</p>'); 
+                    }
+                }
+            });
+
+            NON_QUILL_CONTENT_IDS.forEach(id => {
+                 document.getElementById(id).innerHTML = '<p class="text-muted">생성 중...</p>';
+            });
+            
+            await generateAllContent(textForAPI, apiKeyVal); 
+        });
+        
+        async function generateAllContent(englishText, apiKeyVal) { 
+            try {
+                const [
+                    koreanInterpretation, topicData, question1, question2, literalTranslation
+                ] = await Promise.all([
+                    generateKoreanInterpretation(englishText, apiKeyVal),
+                    generateTopics(englishText, apiKeyVal),
+                    generateQuestion1(englishText, apiKeyVal),
+                    generateQuestion2(englishText, apiKeyVal),
+                    generateLiteralTranslation(englishText, apiKeyVal)
+                ]);
+                
+                // Helper function to format literal translation for Quill
+                function formatLiteralTranslationForQuill(htmlString) {
+                    if (!htmlString) return '<p class="text-muted">직역 정보를 생성하지 못했습니다.</p>';
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = htmlString; // API 응답: <p><b>Eng1</b><br>Kor1</p><p><b>Eng2</b><br>Kor2</p>
+                    let quillHtml = '';
+                    const paragraphs = tempDiv.querySelectorAll('p');
+                    paragraphs.forEach(p => {
+                        const boldNode = p.querySelector('b');
+                        if (boldNode) {
+                            const engText = boldNode.textContent.trim();
+                            let korText = "";
+                            
+                            // Extract Korean text (text after <br>)
+                            const innerHTMLParts = p.innerHTML.split(/<br\s*\/?>/i);
+                            if (innerHTMLParts.length > 1) {
+                                const tempKorDiv = document.createElement('div');
+                                // Join remaining parts in case Korean text itself contains <br> (though unlikely for this API)
+                                tempKorDiv.innerHTML = innerHTMLParts.slice(1).join('<br>'); 
+                                korText = tempKorDiv.textContent.trim();
+                            } else { 
+                                // Fallback if no <br> or structure is unexpected after removing <b>
+                                let tempFullText = p.textContent.trim();
+                                if (tempFullText.startsWith(engText)) {
+                                    korText = tempFullText.substring(engText.length).trim();
+                                } else {
+                                     // If engText is not at the start, it's harder to reliably get korText this way
+                                     // This case should be rare given the API's specified output format
+                                    korText = tempFullText; 
+                                }
+                            }
+                            // Ensure empty strings are handled to avoid "null" or "undefined" in output
+                            if (engText) quillHtml += `<p>${engText}</p>`;
+                            // Add an empty paragraph for Korean if it's empty but English exists, to maintain pairing for editing
+                            quillHtml += `<p>${korText || ' '}</p>`; // Use a space if korText is empty to create an editable line
+                        } else if (p.textContent.trim()) { 
+                            quillHtml += `<p>${p.textContent.trim()}</p>`;
+                        }
+                    });
+                    return quillHtml || '<p class="text-muted">직역 정보 처리 중 오류가 발생했습니다.</p>';
+                }
+
+                const formattedLiteralTranslation = formatLiteralTranslationForQuill(literalTranslation);
+
+                const quillEditorContents = {
+                    'koreanInterpretationContent': koreanInterpretation.replace(/```html|```/g, '').trim(),
+                    'topicEnglishContent': topicData.english.replace(/```html|```/g, '').trim(),
+                    'topicKoreanContent': topicData.korean.replace(/```html|```/g, '').trim(),
+                    'literalTableContent': formattedLiteralTranslation, 
+                    'englishOnlyContent': englishText.replace(/\n/g, '<br>'),
+                    'type2LiteralTranslationContent': formattedLiteralTranslation 
+                };
+
+                for (const id in quillEditorContents) {
+                    if (id === 'englishPassageContent' || id === EDITOR_ID_TYPE1) continue; 
+
+                    if (activeQuillEditors[id]) {
+                        activeQuillEditors[id].root.innerHTML = quillEditorContents[id];
+                    } else {
+                        initQuillEditor(id, quillEditorContents[id]); 
+                    }
+                }
+
+                const question1Div = document.getElementById('question1Content');
+                if (question1Div) {
+                    question1Div.innerHTML = question1.replace(/```html|```/g, '').trim();
+                }
+                
+                const question2Div = document.getElementById('question2Content');
+                if (question2Div) {
+                     question2Div.innerHTML = question2.replace(/```html|```/g, '').trim();
+                }
+                
+                loadingElement.style.display = 'none'; 
+            } catch (error) {
+                console.error('Error generating content:', error);
+                alert('콘텐츠 생성 중 오류가 발생했습니다: ' + error.message);
+                loadingElement.style.display = 'none';
+            }
+        }
+        
+        async function callGeminiAPI(prompt, apiKeyVal) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKeyVal}`; 
+            const requestData = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 8192 } 
+            };
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            if (!response.ok) { 
+                const errorText = await response.text();
+                throw new Error(`API 호출 실패 (${response.status}): ${errorText}`);
+            }
+            const data = await response.json();
+            if (!data.candidates || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0].text) {
+                console.error("Invalid API response structure:", data);
+                throw new Error('API에서 유효한 응답을 받지 못했습니다.');
+            }
+            return data.candidates[0].content.parts[0].text; 
+        }
+        async function generateKoreanInterpretation(englishText, apiKeyVal) {
+            const prompt = `다음 영어 텍스트를 한국의 고등학생들이 이해하기 쉽도록 자연스러운 한국어로 의역해주세요. 각 문장의 의미를 정확히 전달하되, 전체적인 흐름이 부드럽도록 작성해주세요. 전문적인 용어는 쉽게 풀어서 설명하고, 필요한 경우 예시를 들어 이해를 도와주세요. 결과는 HTML 단락(<p>) 태그로 감싸주세요.\n\n영어 지문:\n${englishText}`;
+            return await callGeminiAPI(prompt, apiKeyVal);
+        }
+        async function generateTopics(englishText, apiKeyVal) {
+            const prompt = `다음 영어 지문을 분석하고 핵심 주제를 영어와 한국어로 각각 추출해주세요. 주제는 지문의 핵심 내용을 간결하고 명확하게 나타내야 합니다. JSON 형식으로 응답해주세요 (예: {"english": "Topic in English", "korean": "주제 한국어 버전"}).\n\n영어 지문:\n${englishText}`;
+            const response = await callGeminiAPI(prompt, apiKeyVal);
+            let cleaned = response.replace(/```json|```/g, '').trim(); 
+            try {
+                const jsonMatch = cleaned.match(/{[\s\S]*}/); 
+                if (jsonMatch) { cleaned = jsonMatch[0]; }
+                return JSON.parse(cleaned);
+            } catch (e) { 
+                console.error('Failed to parse topic JSON:', e, cleaned);
+                const engMatch = cleaned.match(/"english"\s*:\s*"([^"]+)"/i);
+                const korMatch = cleaned.match(/"korean"\s*:\s*"([^"]+)"/i);
+                return { english: engMatch ? engMatch[1] : "Topic extraction failed.", korean: korMatch ? korMatch[1] : "주제 추출 실패" };
+            }
+        }
+        async function generateQuestion1(englishText, apiKeyVal) {
+            const prompt = `Based on the following English passage, create a multiple-choice English question appropriate for high school students.
+The question should test their understanding of the main idea or specific details of the passage.
+
+Output everything in a single, valid HTML block.
+The HTML block MUST contain:
+1.  The question itself, enclosed in a <p> tag.
+2.  Exactly five multiple-choice options. These options MUST be presented as an HTML unordered list (<ul>). Each option MUST be an <li> element. Inside each <li> element, YOU MUST include the option label (e.g., "①", "②", "③", "④", "⑤") followed by the option text. For example: \`<li>① This is the first option.</li>\`
+3.  The correct answer, clearly indicated in Korean (e.g., "<p><strong>정답: ③</strong></p>").
+4.  A brief explanation for the answer in Korean, enclosed in a <p> tag.
+
+Here is an EXACT example of the required HTML structure for the entire output:
+\`\`\`html
+<p>What is the primary color of the sky on a sunny day?</p>
+<ul>
+  <li>① Red</li>
+  <li>② Green</li>
+  <li>③ Blue</li>
+  <li>④ Yellow</li>
+  <li>⑤ Orange</li>
+</ul>
+<p><strong>정답: ③</strong></p>
+<p>맑은 날 하늘의 주된 색은 파란색입니다. 이는 레일리 산란 현상 때문입니다.</p>
+\`\`\`
+
+Passage:
+${englishText}`;
+            return await callGeminiAPI(prompt, apiKeyVal);
+        }
+        async function generateQuestion2(englishText, apiKeyVal) {
+            const prompt = `Based on the following English passage, create a "fill-in-the-blanks" type multiple-choice question in English for high school students.
+The question should present a summary sentence of the passage (or a key sentence from it) with two blanks, (A) and (B).
+Each multiple-choice option should be a pair of words or short phrases that could fit into blanks (A) and (B) respectively.
+
+Output everything in a single, valid HTML block.
+The HTML block MUST contain:
+1.  The question instruction as a paragraph.
+2.  The summary sentence with blanks (A) and (B) clearly marked (e.g., using <i>(A)</i> and <i>(B)</i>), enclosed in a <p> tag.
+3.  Exactly five multiple-choice options. These options MUST be presented as an HTML unordered list (<ul>). Each option MUST be an <li> element. Inside each <li> element, YOU MUST include the option label (e.g., "①", "②", "③", "④", "⑤") followed by the (A) and (B) filler words/phrases. For example: \`<li>① (A) jumps - (B) dog</li>\`
+4.  The correct answer, clearly indicated in Korean (e.g., "<p><strong>정답: ①</strong></p>").
+5.  A brief explanation for the answer in Korean, also as a paragraph.
+
+Here is an EXACT example of the required HTML structure for the entire output:
+\`\`\`html
+<p>Which pair of words best completes the blanks (A) and (B)?</p>
+<p><i>The quick brown fox <i>(A)</i> over the lazy <i>(B)</i>.</i></p>
+<ul>
+  <li>① (A) jumps - (B) dog</li>
+  <li>② (A) leaped - (B) cat</li>
+  <li>③ (A) skipped - (B) log</li>
+  <li>④ (A) ran - (B) frog</li>
+  <li>⑤ (A) hopped - (B) mat</li>
+</ul>
+<p><strong>정답: ①</strong></p>
+<p>갈색 여우는 게으른 개 위로 점프합니다.</p>
+\`\`\`
+
+Passage:
+${englishText}`;
+            return await callGeminiAPI(prompt, apiKeyVal);
+        }
+        async function generateLiteralTranslation(englishText, apiKeyVal) {
+            const prompt = `다음 영어 지문을 문장별로 나누어, 각 영어 문장 바로 아래에 한국어 직역을 제공해주세요. 각 영어 문장과 그에 해당하는 한국어 직역은 하나의 쌍으로 취급합니다. 결과는 HTML 형식으로, 각 영어-한국어 쌍을 <p> 태그로 감싸고, 영어 원문은 <b> 태그로 강조하며, 한국어 직역과 <br>로 구분해주세요.\n\n영어 지문:\n${englishText}`;
+            return await callGeminiAPI(prompt, apiKeyVal);
+        }
+        
+        function getCurrentTextForExport() { 
+            const unitChoice = unitSelector.value;
+            const sectionChoice = sectionSelector.value;
+            const paragraphChoice = paragraphSelector.value;
+            let currentText = ""; 
+
+            const mainEditor = activeQuillEditors['englishPassageContent']; 
+
+            if (unitChoice === "all") { 
+                currentText = mainEditor ? mainEditor.root.innerHTML : window.uploadedEnglishText; 
+            } else {
+                const selectedUnit = parsedUnits.find(unit => unit.unitTitle === unitChoice);
+                if (selectedUnit) {
+                    if (sectionChoice === "unit_full_content") {
+                        currentText = selectedUnit.unitTitle + "\n" + selectedUnit.unitContentWithoutTitle;
+                    } else {
+                        let targetSectionData = null;
+                        if (sectionChoice === "grammar" && selectedUnit.grammarSection) {
+                            targetSectionData = selectedUnit.grammarSection;
+                        } else if (sectionChoice === "reading" && selectedUnit.readingSection) {
+                            targetSectionData = selectedUnit.readingSection;
+                        }
+
+                        if (targetSectionData) {
+                            if (paragraphChoice === "section_full_content" || !targetSectionData.paragraphs || targetSectionData.paragraphs.length === 0) {
+                                currentText = targetSectionData.fullText;
+                            } else {
+                                const selectedPara = targetSectionData.paragraphs.find(p => p.id === paragraphChoice);
+                                currentText = selectedPara ? selectedPara.text : targetSectionData.fullText; 
+                            }
+                        } else { 
+                             currentText = selectedUnit.unitTitle + "\n" + selectedUnit.unitContentWithoutTitle; 
+                        }
+                    }
+                } else { 
+                     currentText = mainEditor ? mainEditor.root.innerHTML : window.uploadedEnglishText;
+                }
+            }
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = currentText; 
+            return tempDiv.textContent || tempDiv.innerText || "";
+        }
+        
+        function getEditorContentById(editorId) { 
+            if (NON_QUILL_CONTENT_IDS.includes(editorId)) {
+                const el = document.getElementById(editorId);
+                return el ? el.innerHTML : "내용 없음";
+            }
+            if (activeQuillEditors[editorId]) {
+                return activeQuillEditors[editorId].root.innerHTML; 
+            }
+            const el = document.getElementById(editorId); 
+            return el ? el.innerHTML : "내용 없음"; 
+        }
+
+
+        // MS Word로 내보내기 이벤트 리스너 등록
+        document.getElementById('exportButtonType3').addEventListener('click', function() { exportToWord('type3');});
+        document.getElementById('exportButtonType1').addEventListener('click', function() { exportToWord('type1');});
+        document.getElementById('exportButtonType2').addEventListener('click', function() { exportToWord('type2');});
+
+        // MS Word로 내보내기 함수 (docx.js 사용)
+        function exportToWord(noteType) {
+            try { 
+                const { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, Table, TableRow, TableCell, BorderStyle, PageBreak, WidthType, ShadingType, convertInchesToTwip } = docx;
+                
+                function rgbToHex(rgbString) {
+                    if (!rgbString) return undefined;
+                    if (rgbString.startsWith('#')) return rgbString.substring(1);
+                    if (!rgbString.startsWith('rgb')) return undefined;
+                    const rgb = rgbString.match(/\d+/g);
+                    if (!rgb || rgb.length < 3) return undefined;
+                    return ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1).toUpperCase();
+                }
+
+                function htmlToDocxElements(htmlContent) {
+                    if (!htmlContent || typeof htmlContent !== 'string') return [new Paragraph({text: "내용 없음", style: 'Paperlogy'})];
+                    
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = htmlContent;
+                    
+                    const finalDocxElements = []; 
+
+                    function parseNodeRecursive(node, currentStyle = {}, listInfo = null) {
+                        const elements = []; 
+                        const baseFont = currentStyle.font || 'Paperlogy'; 
+
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            if (node.textContent && node.textContent.trim() !== '') { 
+                                const textRunOptions = { text: node.textContent, font: baseFont };
+                                if (currentStyle.bold) textRunOptions.bold = true;
+                                if (currentStyle.italics) textRunOptions.italics = true;
+                                if (currentStyle.underline) textRunOptions.underline = {};
+                                if (currentStyle.strike) textRunOptions.strike = true;
+                                if (currentStyle.color) textRunOptions.color = currentStyle.color;
+                                if (currentStyle.size) textRunOptions.size = currentStyle.size;
+                                if (currentStyle.shading) textRunOptions.shading = currentStyle.shading;
+                                if (currentStyle.superScript) textRunOptions.superScript = true;
+                                if (currentStyle.subScript) textRunOptions.subScript = true;
+                                return [new TextRun(textRunOptions)]; 
+                            } else if (node.textContent) { 
+                                return [new TextRun({text: node.textContent, font: baseFont})];
+                            }
+                            return [];
+                        }
+
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            const tagName = node.tagName.toLowerCase();
+                            const newStyle = { ...currentStyle }; 
+                            if (!newStyle.font) newStyle.font = 'Paperlogy';
+
+                            if (['strong', 'b'].includes(tagName)) newStyle.bold = true;
+                            if (['em', 'i'].includes(tagName)) newStyle.italics = true;
+                            if (tagName === 'u') newStyle.underline = true;
+                            if (['s', 'strike', 'del'].includes(tagName)) newStyle.strike = true;
+                            if (tagName === 'sup') newStyle.superScript = true;
+                            if (tagName === 'sub') newStyle.subScript = true;
+
+                            if (node.style.fontWeight === 'bold' || parseInt(node.style.fontWeight) >= 700) newStyle.bold = true;
+                            if (node.style.fontStyle === 'italic') newStyle.italics = true;
+                            if (node.style.textDecorationLine) {
+                                if (node.style.textDecorationLine.includes('underline')) newStyle.underline = true;
+                                if (node.style.textDecorationLine.includes('line-through')) newStyle.strike = true;
+                            }
+                            if (node.style.color) newStyle.color = rgbToHex(node.style.color);
+                            if (node.style.backgroundColor && node.style.backgroundColor !== 'rgba(0, 0, 0, 0)' && node.style.backgroundColor !== 'transparent') {
+                                newStyle.shading = { type: ShadingType.CLEAR, fill: rgbToHex(node.style.backgroundColor), color: "auto" };
+                            }
+                            if (node.style.fontFamily) { 
+                                newStyle.font = node.style.fontFamily.split(',')[0].trim().replace(/['"]/g, '');
+                            }
+                            if (node.style.fontSize) {
+                                const sizeMatch = node.style.fontSize.match(/([\d.]+)(px|pt)/);
+                                if (sizeMatch) {
+                                    const value = parseFloat(sizeMatch[1]);
+                                    if (sizeMatch[2] === 'pt') newStyle.size = Math.round(value * 2);
+                                    else if (sizeMatch[2] === 'px') newStyle.size = Math.round(value * 0.75 * 2);
+                                }
+                            }
+                            
+                            node.classList.forEach(cls => {
+                                if (cls.startsWith('ql-font-')) {
+                                    const fontName = cls.substring('ql-font-'.length);
+                                    const fontMapping = { 'paperlogy': 'Paperlogy', 'malgun-gothic': "Malgun Gothic", 'dotum': "Dotum", 'gulim': "Gulim", 'batang': "Batang", 'gungsuh': "Gungsuh", 'arial': 'Arial', 'comic-sans': 'Comic Sans MS', 'courier-new': 'Courier New', 'georgia': 'Georgia', 'helvetica': 'Helvetica', 'lucida-grande': 'Lucida Grande', 'tahoma': 'Tahoma', 'times-new-roman': 'Times New Roman', 'trebuchet-ms': 'Trebuchet MS', 'verdana': 'Verdana' };
+                                    newStyle.font = fontMapping[fontName] || fontName.replace(/-/g, ' ');
+                                } else if (cls.startsWith('ql-size-')) {
+                                    const sizeName = cls.substring('ql-size-'.length);
+                                    if (sizeName === 'small') newStyle.size = Math.round(10 * 2);
+                                    else if (sizeName === 'large') newStyle.size = Math.round(18 * 2);
+                                    else if (sizeName === 'huge') newStyle.size = Math.round(32 * 2);
+                                }
+                            });
+
+                            if (['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre'].includes(tagName)) {
+                                const paragraphChildren = [];
+                                Array.from(node.childNodes).forEach(child => {
+                                    paragraphChildren.push(...parseNodeRecursive(child, { ...newStyle }, listInfo)); 
+                                });
+
+                                const paragraphOptions = { children: paragraphChildren.length > 0 ? paragraphChildren : [new TextRun({font: newStyle.font || 'Paperlogy'})], style: newStyle.font || 'Paperlogy' }; 
+
+                                let alignment = AlignmentType.LEFT;
+                                if (node.classList.contains('ql-align-center') || node.style.textAlign === 'center') alignment = AlignmentType.CENTER;
+                                else if (node.classList.contains('ql-align-right') || node.style.textAlign === 'right') alignment = AlignmentType.RIGHT;
+                                else if (node.classList.contains('ql-align-justify') || node.style.textAlign === 'justify') alignment = AlignmentType.JUSTIFIED;
+                                paragraphOptions.alignment = alignment;
+
+                                if (tagName.startsWith('h')) {
+                                    const level = parseInt(tagName.substring(1));
+                                    if (level >= 1 && level <= 6) paragraphOptions.heading = HeadingLevel[`HEADING_${level}`];
+                                } else if (node.classList.contains('ql-header')) { 
+                                    const headerLevel = parseInt(node.getAttribute('value')) || (node.classList.contains('ql-header-1') ? 1 : (node.classList.contains('ql-header-2') ? 2 : 0));
+                                    if (headerLevel === 1) paragraphOptions.heading = HeadingLevel.HEADING_1;
+                                    else if (headerLevel === 2) paragraphOptions.heading = HeadingLevel.HEADING_2;
+                                }
+                                
+                                for (let i = 1; i <= 8; i++) {
+                                    if (node.classList.contains(`ql-indent-${i}`)) {
+                                        paragraphOptions.indent = { left: convertInchesToTwip(0.5 * i) };
+                                        break;
+                                    }
+                                }
+
+                                if (tagName === 'blockquote') {
+                                    paragraphOptions.indent = { ...paragraphOptions.indent, left: convertInchesToTwip( (paragraphOptions.indent?.leftInTwips || 0)/convertInchesToTwip(1) + 0.5 ) }; 
+                                }
+
+                                if (tagName === 'pre' || node.classList.contains('ql-syntax')) {
+                                    const codeBlockStyle = { font: "Courier New", size: Math.round(10 * 2) };
+                                    const codeRuns = [];
+                                    Array.from(node.childNodes).forEach(child => { 
+                                        codeRuns.push(...parseNodeRecursive(child, { ...newStyle, ...codeBlockStyle }, listInfo));
+                                    });
+                                    paragraphOptions.children = codeRuns.length > 0 ? codeRuns : [new TextRun({font: "Courier New"})];
+                                    paragraphOptions.shading = { type: ShadingType.CLEAR, fill: "F0F0F0", color: "auto" }; 
+                                }
+                                
+                                if (listInfo) {
+                                    paragraphOptions.numbering = {
+                                        reference: listInfo.type === 'ol' ? "custom-numbering" : "custom-bullet",
+                                        level: listInfo.level
+                                    };
+                                }
+                                elements.push(new Paragraph(paragraphOptions));
+
+                            } else if (tagName === 'ul' || tagName === 'ol') {
+                                const currentListLevel = listInfo ? listInfo.level + 1 : 0;
+                                Array.from(node.children).forEach(liNode => { 
+                                    if (liNode.tagName.toLowerCase() === 'li') {
+                                        Array.from(liNode.childNodes).forEach(childOfLi => {
+                                            elements.push(...parseNodeRecursive(childOfLi, { ...newStyle }, { type: tagName, level: currentListLevel }));
+                                        });
+                                    }
+                                });
+                            } else if (tagName === 'table') {
+                                const tableRows = [];
+                                const trNodes = Array.from(node.querySelectorAll(':scope > tbody > tr, :scope > tr'));
+                                trNodes.forEach(trNode => {
+                                    const tableCells = [];
+                                    const tdNodes = Array.from(trNode.querySelectorAll(':scope > td, :scope > th'));
+                                    tdNodes.forEach(tdNode => {
+                                        const cellChildren = [];
+                                        Array.from(tdNode.childNodes).forEach(cellChildNode => {
+                                            cellChildren.push(...parseNodeRecursive(cellChildNode, {font: newStyle.font || 'Paperlogy'}, null)); 
+                                        });
+                                        
+                                        const finalCellChildren = [];
+                                        let currentRuns = [];
+                                        cellChildren.forEach(el => {
+                                            if (el instanceof TextRun) {
+                                                currentRuns.push(el);
+                                            } else { 
+                                                if (currentRuns.length > 0) {
+                                                    finalCellChildren.push(new Paragraph({children: currentRuns, style: newStyle.font || 'Paperlogy'}));
+                                                    currentRuns = [];
+                                                }
+                                                finalCellChildren.push(el);
+                                            }
+                                        });
+                                        if (currentRuns.length > 0) {
+                                            finalCellChildren.push(new Paragraph({children: currentRuns, style: newStyle.font || 'Paperlogy'}));
+                                        }
+
+                                        const cellOptions = { children: finalCellChildren.length > 0 ? finalCellChildren : [new Paragraph({style: newStyle.font || 'Paperlogy'})] };
+                                        if (tdNode.style.backgroundColor && tdNode.style.backgroundColor !== 'rgba(0, 0, 0, 0)' && tdNode.style.backgroundColor !== 'transparent') {
+                                            cellOptions.shading = { type: ShadingType.CLEAR, fill: rgbToHex(tdNode.style.backgroundColor), color: "auto" };
+                                        }
+                                        tableCells.push(new TableCell(cellOptions));
+                                    });
+                                    if (tableCells.length > 0) tableRows.push(new TableRow({ children: tableCells }));
+                                });
+                                if (tableRows.length > 0) elements.push(new Table({ rows: tableRows, width: {size: 100, type: WidthType.PERCENTAGE} }));
+                            
+                            } else if (tagName === 'br') {
+                                return [new TextRun({break:1, font: newStyle.font || 'Paperlogy'})]; 
+                            }
+                            else { 
+                                const inlineRuns = [];
+                                Array.from(node.childNodes).forEach(child => {
+                                    inlineRuns.push(...parseNodeRecursive(child, { ...newStyle }, listInfo));
+                                });
+                                return inlineRuns; 
+                            }
+                        }
+                        return elements; 
+                    }
+                    
+                    Array.from(tempDiv.childNodes).forEach(childNode => {
+                        const processedElements = parseNodeRecursive(childNode, {font: 'Paperlogy'}); 
+                        let currentRuns = [];
+                        processedElements.forEach(el => {
+                            if (el instanceof TextRun) {
+                                currentRuns.push(el);
+                            } else { 
+                                if (currentRuns.length > 0) {
+                                    finalDocxElements.push(new Paragraph({children: currentRuns, style: 'Paperlogy'}));
+                                    currentRuns = [];
+                                }
+                                finalDocxElements.push(el);
+                            }
+                        });
+                        if (currentRuns.length > 0) {
+                            finalDocxElements.push(new Paragraph({children: currentRuns, style: 'Paperlogy'}));
+                        }
+                    });
+                    
+                    if (finalDocxElements.length === 0) {
+                        if (tempDiv.innerHTML.trim() === "" || tempDiv.innerHTML.toLowerCase().trim() === "<p><br></p>") {
+                             return [new Paragraph({text: "", style: 'Paperlogy'})]; 
+                        }
+                    }
+                    return finalDocxElements.length > 0 ? finalDocxElements : [new Paragraph({text: "", style: 'Paperlogy'})];
+                }
+
+
+                // 문서 제목 설정
+                let docChildren = [
+                    new Paragraph({ text: `English Lesson Note (${noteType})`, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, style: 'Paperlogy' }),
+                    new Paragraph({ text: " ", style: 'Paperlogy' }), // 공백 단락
+                ];
+
+                // 노트 타입별 내용 구성
+                if (noteType === 'type1') {
+                    docChildren.push(new Paragraph({ text: "영어 지문", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }));
+                    docChildren.push(...htmlToDocxElements(getEditorContentById('type1EnglishPassageContent')));
+                } else if (noteType === 'type2') {
+                    docChildren.push(new Paragraph({ text: "한줄 해석 (영어 원문 + 직역)", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }));
+                    const type2Html = getEditorContentById('type2LiteralTranslationContent'); 
+                    docChildren.push(...htmlToDocxElements(type2Html)); 
+                } else if (noteType === 'type3') {
+                    const englishPassageDocx = htmlToDocxElements(getEditorContentById('englishPassageContent'));
+                    const koreanInterpretationDocx = htmlToDocxElements(getEditorContentById('koreanInterpretationContent'));
+                    const topicEnglishDocx = htmlToDocxElements(getEditorContentById('topicEnglishContent'));
+                    const topicKoreanDocx = htmlToDocxElements(getEditorContentById('topicKoreanContent'));
+                    const question1Docx = htmlToDocxElements(getEditorContentById('question1Content'));
+                    const question2Docx = htmlToDocxElements(getEditorContentById('question2Content'));
+                    const literalTableDocx = htmlToDocxElements(getEditorContentById('literalTableContent')); 
+                    const englishOnlyDocx = htmlToDocxElements(getEditorContentById('englishOnlyContent'));
+
+                    const mainTable = new Table({
+                        width: { size: 100, type: WidthType.PERCENTAGE },
+                        columnWidths: [4800, 4800], 
+                        rows: [
+                            new TableRow({ 
+                                children: [
+                                    new TableCell({ 
+                                        children: [ new Paragraph({ text: "영어 지문 (선택된 내용)", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }), ...englishPassageDocx ],
+                                        borders: { top: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, bottom: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, left: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, right: { style: BorderStyle.SINGLE, size: 6, color: "auto" } },
+                                    }),
+                                    new TableCell({ 
+                                        children: [
+                                            new Paragraph({ text: "주제 (영어)", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }), ...topicEnglishDocx,
+                                            new Paragraph({ text: " ", style: 'Paperlogy' }), 
+                                            new Paragraph({ text: "주제 (한국어)", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }), ...topicKoreanDocx
+                                        ],
+                                        borders: { top: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, bottom: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, left: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, right: { style: BorderStyle.SINGLE, size: 6, color: "auto" } },
+                                    }),
+                                ]
+                            }),
+                            new TableRow({ 
+                                children: [
+                                    new TableCell({ 
+                                        children: [ new Paragraph({ text: "한국어 의역", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }), ...koreanInterpretationDocx ],
+                                        borders: { top: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, bottom: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, left: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, right: { style: BorderStyle.SINGLE, size: 6, color: "auto" } },
+                                    }),
+                                    new TableCell({ 
+                                        children: [
+                                            new Paragraph({ text: "Question 1", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }), ...question1Docx,
+                                            new Paragraph({ text: " ", style: 'Paperlogy' }), 
+                                            new Paragraph({ text: "Question 2", heading: HeadingLevel.HEADING_3, style: 'Paperlogy' }), ...question2Docx
+                                        ],
+                                        borders: { top: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, bottom: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, left: { style: BorderStyle.SINGLE, size: 6, color: "auto" }, right: { style: BorderStyle.SINGLE, size: 6, color: "auto" } },
+                                    }),
+                                ]
+                            }),
+                        ]
+                    });
+                    docChildren.push(mainTable);
+                    docChildren.push(new Paragraph({ children: [new PageBreak()], style: 'Paperlogy' })); 
+                    docChildren.push(new Paragraph({ text: "직역 (Literal Translation)", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, style: 'Paperlogy' }));
+                    docChildren.push(...literalTableDocx); 
+                    docChildren.push(new Paragraph({ children: [new PageBreak()], style: 'Paperlogy' })); 
+                    docChildren.push(new Paragraph({ text: "영어 지문만 (선택된 내용)", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, style: 'Paperlogy' }));
+                    docChildren.push(...englishOnlyDocx);
+                }
+
+
+                // 문서 생성
+                const doc = new Document({
+                     numbering: { 
+                        config: [
+                            {
+                                reference: "custom-numbering", // for <ol>
+                                levels: [ // 0-indexed
+                                    { level: 0, format: "decimal", text: "%1.", alignment: AlignmentType.START, style: { paragraph: { indent: { left: convertInchesToTwip(0.25), hanging: convertInchesToTwip(0.25) } } } },
+                                    { level: 1, format: "lowerLetter", text: "%2)", alignment: AlignmentType.START, style: { paragraph: { indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } } } },
+                                    { level: 2, format: "lowerRoman", text: "%3.", alignment: AlignmentType.START, style: { paragraph: { indent: { left: convertInchesToTwip(0.75), hanging: convertInchesToTwip(0.25) } } } },
+                                ],
+                            },
+                            {
+                                reference: "custom-bullet", // for <ul>
+                                levels: [
+                                    { level: 0, format: "bullet", text: "•", alignment: AlignmentType.START, style: { paragraph: { indent: { left: convertInchesToTwip(0.25), hanging: convertInchesToTwip(0.25) } } } },
+                                    { level: 1, format: "bullet", text: "◦", alignment: AlignmentType.START, style: { paragraph: { indent: { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } } } },
+                                    { level: 2, format: "bullet", text: "▪", alignment: AlignmentType.START, style: { paragraph: { indent: { left: convertInchesToTwip(0.75), hanging: convertInchesToTwip(0.25) } } } },
+                                ]
+                            }
+                        ],
+                    },
+                    sections: [{
+                        properties: {},
+                        children: docChildren,
+                    }],
+                     styles: { // 전역 스타일 정의
+                        paragraphStyles: [
+                            {
+                                id: "Paperlogy", // 스타일 ID
+                                name: "Paperlogy Font Style",
+                                run: {
+                                    font: "Paperlogy",
+                                },
+                            },
+                        ],
+                    },
+                });
+                
+                Packer.toBlob(doc).then(blob => {
+                    saveAs(blob, `English_Lesson_Note_${noteType}.docx`);
+                }).catch(err => {
+                    console.error("Error creating DOCX blob:", err);
+                    alert("MS Word 파일 생성 중 Blob 생성 오류가 발생했습니다: " + err.message);
+                });
+            } catch (error) {
+                console.error("Error during Word export process:", error);
+                alert("MS Word 파일 내보내기 중 오류 발생: " + error.message);
+            }
+        }
+
+        // Google Docs로 내보내기 이벤트 리스너 등록
+        document.getElementById('exportGoogleDocsType3').addEventListener('click', function() { exportToGoogleDocs('type3'); });
+        document.getElementById('exportGoogleDocsType1').addEventListener('click', function() { exportToGoogleDocs('type1'); });
+        document.getElementById('exportGoogleDocsType2').addEventListener('click', function() { exportToGoogleDocs('type2'); });
+
+        // Google Docs로 내보내기 함수 (새 탭에 HTML 표시 후 수동 복사 안내)
+        function exportToGoogleDocs(noteType) {
+            let combinedHtml = `<div class="note-header">English Lesson Note (${noteType})</div>`;
+            
+            // 노트 타입별 HTML 내용 조합
+            if (noteType === 'type1') {
+                combinedHtml += `<div><h3>영어 지문</h3>${getEditorContentById('type1EnglishPassageContent')}</div>`;
+            } else if (noteType === 'type2') {
+                combinedHtml += `<div><h3>한줄 해석 (영어 원문 + 직역)</h3>${getEditorContentById('type2LiteralTranslationContent')}</div>`; 
+            } else if (noteType === 'type3') {
+                combinedHtml += `<div style="display:flex;">`; 
+                combinedHtml += `<div style="flex:1; padding-right:10px;">`; 
+                combinedHtml += `<div><h3>${document.querySelector('#englishPassageSection .section-title').innerText}</h3>${getEditorContentById('englishPassageContent')}</div>`;
+                combinedHtml += `<div><h3>${document.querySelector('#koreanInterpretationSection .section-title').innerText}</h3>${getEditorContentById('koreanInterpretationContent')}</div>`;
+                combinedHtml += `</div>`; 
+                combinedHtml += `<div style="flex:1; padding-left:10px;">`; 
+                combinedHtml += `<div><h3>${document.querySelector('#topicEnglishSection .section-title').innerText}</h3>${getEditorContentById('topicEnglishContent')}</div>`;
+                combinedHtml += `<div><h3>${document.querySelector('#topicKoreanSection .section-title').innerText}</h3>${getEditorContentById('topicKoreanContent')}</div>`;
+                combinedHtml += `<div><h3>${document.querySelector('#question1Section .section-title').innerText}</h3>${getEditorContentById('question1Content')}</div>`;
+                combinedHtml += `<div><h3>${document.querySelector('#question2Section .section-title').innerText}</h3>${getEditorContentById('question2Content')}</div>`;
+                combinedHtml += `</div>`; 
+                combinedHtml += `</div>`; 
+                combinedHtml += `<div style="margin-top:20px;"><h3>${document.querySelector('#literalTableFullSection .section-title').innerText}</h3>${getEditorContentById('literalTableContent')}</div>`;
+                combinedHtml += `<div style="margin-top:20px;"><h3>${document.querySelector('#englishOnlyFullSection .section-title').innerText}</h3>${getEditorContentById('englishOnlyContent')}</div>`;
+            }
+
+            // 기본 스타일 및 복사 안내 메시지
+            const styles = `
+                <style>
+                    @font-face {
+                        font-family: 'Paperlogy';
+                        src: url('https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/Paperlogy.css'); 
+                        font-weight: normal;
+                        font-style: normal;
+                    }
+                    body { font-family: 'Paperlogy', 'Noto Sans KR', 'Malgun Gothic', sans-serif; padding: 40px; color: #4a3f35; background-color: #fdfaef; line-height: 1.7; }
+                    h3 { color: #795548; margin-top: 20px; margin-bottom: 8px; font-weight: normal; border-bottom: 1px solid #eee0c4; padding-bottom: 5px; font-size: 1.4em;}
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 1rem; } 
+                    th, td { border: 1px solid #e0d0b8; padding: 10px; text-align: left; vertical-align: top;}
+                    th { background-color: #fff5e6; font-weight: normal; }
+                    ul, ol { list-style-position: inside; padding-left: 5px; margin-top: 5px;} 
+                    li { margin-bottom: 6px;}
+                    .note-header { text-align: center; margin-bottom: 30px; font-weight: normal; font-size: 2.2rem; color: #5d4037; }
+                    .section-title { font-weight: normal; margin-bottom: 10px; color: #795548; font-size: 1.5em; }
+                    .ql-font-paperlogy { font-family: 'Paperlogy', sans-serif !important; }
+                    .ql-editor p, .ql-editor li, .content p, .content li { margin-bottom: 0.75em; line-height: 1.75;}
+                </style>
+            `;
+            const guide = `<div style='background:#fff5e6; color:#6d4c41; border:1px solid #f0e0c8; padding:15px 25px; margin-bottom:20px; border-radius:8px; font-size: 1rem;'><strong>Google Docs로 복사 안내:</strong> 이 페이지의 내용을 전체 선택 (Ctrl+A 또는 Cmd+A) 후 복사 (Ctrl+C 또는 Cmd+C)하여 Google Docs 새 문서에 붙여넣기 (Ctrl+V 또는 Cmd+V) 하세요. 최상의 결과를 위해 Google Docs에서 '서식 없이 붙여넣기'(Ctrl+Shift+V 또는 Cmd+Shift+V) 옵션을 사용해 보세요.</div>`;
+            const htmlToExport = `<!DOCTYPE html><html lang="ko"><head><meta charset='utf-8'><title>수업노트 내용 (${noteType})</title>${styles}</head><body>${guide}${combinedHtml}</body></html>`;
+            
+            // 새 탭에 HTML 내용 열기
+            const win = window.open("", "_blank");
+            win.document.open();
+            win.document.write(htmlToExport);
+            win.document.close();
+        }
+
+        // --- 섹션 드래그 앤 드롭 기능 (3종 탭 전용) ---
+        let draggedItem = null; // 현재 드래그 중인 아이템
+
+        document.querySelectorAll('#type3-content .section').forEach(item => { // 3종 탭 내의 섹션들만
+            item.addEventListener('dragstart', (e) => {
+                // 섹션 제목 부분만 드래그 가능하도록 제한
+                if (!e.target.classList.contains('section-title') && !e.target.closest('.section-title')) {
+                     e.preventDefault(); // 제목이 아니면 드래그 방지
+                     return;
+                }
+                // Quill 에디터 내부 클릭 시 드래그 방지 (해당 섹션이 Quill 에디터일 경우)
+                const contentDiv = item.querySelector('.content');
+                if (contentDiv && contentDiv.classList.contains('ql-container')) { // Quill 에디터인지 확인
+                    if (e.target.closest('.ql-editor')) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                draggedItem = item;
+                setTimeout(() => item.style.opacity = '0.5', 0); // 드래그 시 반투명 효과
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            item.addEventListener('dragend', () => { // 드래그 종료 시
+                setTimeout(() => {
+                    if(draggedItem) draggedItem.style.opacity = '1'; // 투명도 복원
+                    draggedItem = null;
+                }, 0);
+            });
+        });
+
+        document.querySelectorAll('#type3-content .draggable-container').forEach(container => { // 드롭 가능한 컨테이너
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault(); // 기본 동작 방지 (드롭 허용)
+                e.dataTransfer.dropEffect = 'move';
+            });
+
+            container.addEventListener('drop', (e) => { // 드롭 시
+                e.preventDefault();
+                if (draggedItem) {
+                    const target = e.target.closest('.section'); // 드롭된 위치의 섹션
+                    if (target && target.parentElement === container && target !== draggedItem) { // 같은 컨테이너 내 다른 섹션 위/아래로 이동
+                        const rect = target.getBoundingClientRect();
+                        const offsetY = e.clientY - rect.top; // 마우스 Y 좌표 기준
+                        if (offsetY > target.offsetHeight / 2) { // 섹션의 절반 아래면 뒤에 삽입
+                            container.insertBefore(draggedItem, target.nextSibling);
+                        } else { // 절반 위면 앞에 삽입
+                            container.insertBefore(draggedItem, target);
+                        }
+                    } else if (e.currentTarget === container) { // 컨테이너의 빈 공간에 드롭 시 맨 뒤로 이동
+                         container.appendChild(draggedItem);
+                    }
+                }
+            });
+        });
+    
+    });
+    </script>
+</body>
+</html>
