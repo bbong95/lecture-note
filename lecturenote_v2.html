@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수업노트 생성기</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&family=Inter%3Awght%40400%3B500%3B700%3B900&family=Noto+Sans%3Awght%40400%3B500%3B700%3B900"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://unpkg.com/mammoth@1.5.1/mammoth.browser.min.js"></script>
+    <script src="https://unpkg.com/docx@7.3.0/build/index.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', "Noto Sans", sans-serif;
+        }
+        /* 웹페이지 내에서는 범용 폰트 사용. DOCX에는 지정 폰트 적용 */
+        .font-seoulnamsan-m { font-family: '서울남산체 M', sans-serif; } /* DOCX용, 웹에서는 대체 폰트 */
+        .font-kimnamyoon { font-family: '김남윤체', sans-serif; } /* DOCX용, 웹에서는 대체 폰트 */
+
+        @font-face {
+            font-family: '서울남산체 M'; /* 실제 DOCX 적용을 위해 시스템에 설치 필요 */
+        }
+        @font-face {
+            font-family: '김남윤체'; /* 실제 DOCX 적용을 위해 시스템에 설치 필요 */
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .passage-item {
+            transition: background-color 0.3s;
+            border-bottom: 1px solid #eee;
+            padding: 8px 4px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        .passage-item:hover {
+            background-color: #f9fafb; /* bg-gray-50 */
+        }
+        .passage-item:last-child {
+            border-bottom: none;
+        }
+        .passage-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 1.15em; /* Tailwind h-4 w-4 approx */
+            height: 1.15em;
+            border-radius: 0.25rem; /* rounded */
+            border-color: #d1d5db; /* border-gray-300 */
+        }
+        .passage-item input[type="checkbox"]:checked {
+            background-color: #2563eb; /* bg-blue-600 */
+            border-color: #2563eb; /* border-blue-600 */
+        }
+        .passage-item label {
+            flex-grow: 1;
+            cursor: pointer;
+        }
+
+        .passage-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .passage-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .passage-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .passage-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Hide the actual file input */
+        #fileInput {
+            display: none;
+        }
+         /* API Key Input Styling */
+         #apiKeyInputContainer {
+            margin-bottom: 1.5rem; /* gap-6 */
+            width: 100%;
+            max-width: 480px; /* 일관된 너비 */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #apiKeyInput {
+            width: 100%;
+            padding: 0.5rem 1rem; /* h-10 px-4 */
+            border-radius: 9999px; /* rounded-full */
+            border: 1px solid #cedbe8;
+            font-size: 0.875rem; /* text-sm */
+            color: #0d141c;
+        }
+        #apiKeyInput:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            border-color: #3490f3;
+            box-shadow: 0 0 0 2px rgba(52, 144, 243, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div class="relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden">
+      <div class="layout-container flex h-full grow flex-col">
+        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf4] px-10 py-3">
+          <div class="flex items-center gap-4 text-[#0d141c]">
+            <div class="size-4"> <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                  d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z"
+                  fill="currentColor"
+                ></path>
+              </svg>
+            </div>
+            <h2 class="text-[#0d141c] text-lg font-bold leading-tight tracking-[-0.015em]">수업노트 생성기</h2>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
+            </div>
+        </header>
+        <main class="px-10 md:px-40 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <div class="flex flex-wrap justify-between gap-3 p-4"><p class="text-[#0d141c] tracking-light text-[32px] font-bold leading-tight min-w-72">수업노트 생성하기</p></div>
+            
+            <div class="flex flex-col p-4" id="uploadSection">
+              <div class="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-[#cedbe8] px-6 py-14">
+                <div class="flex max-w-[480px] flex-col items-center gap-2">
+                  <p class="text-[#0d141c] text-lg font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">영어 지문 업로드</p>
+                  <p class="text-[#0d141c] text-sm font-normal leading-normal max-w-[480px] text-center">수업노트를 생성하기 위해 .txt 또는 .docx 파일을 업로드하세요.</p>
+                </div>
+                
+                <div id="apiKeyInputContainer">
+                    <label for="apiKeyInput" class="block text-sm font-medium text-[#0d141c] mb-1 text-center">Gemini API 키 입력</label>
+                    <input type="password" id="apiKeyInput" placeholder="API 키를 여기에 입력하세요">
+                    <p class="text-xs text-slate-500 mt-1 text-center">API 키는 브라우저에만 저장되며 서버로 전송되지 않습니다. (GitHub Pages 배포 시 필요)</p>
+                </div>
+
+                <input type="file" id="fileInput" accept=".txt,.docx" />
+                <button
+                  id="uploadTriggerButton" 
+                  class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e7edf4] text-[#0d141c] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#dbe4f0] transition-colors"
+                >
+                  <span class="truncate">파일 업로드</span>
+                </button>
+                 <button
+                  id="uploadButton"
+                  class="mt-2 flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#3490f3] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#2378d4] transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+                  <span class="truncate">지문 분석 시작</span>
+                </button>
+                <p class="text-xs text-slate-500 mt-2">.txt 또는 .docx 파일을 업로드해주세요. 여러 지문이 포함된 경우, 각 지문은 명확히 구분되어야 합니다.</p>
+              </div>
+            </div>
+
+            <div id="passageSelectionArea" class="p-4 hidden">
+                <h3 class="text-[#0d141c] text-lg font-bold leading-tight tracking-[-0.015em] pb-2 pt-4">지문 선택</h3>
+                <div class="mb-3 flex items-center">
+                    <input type="checkbox" id="selectAllPassages" class="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <label for="selectAllPassages" class="text-sm font-medium text-[#0d141c]">전체 선택/해제</label>
+                </div>
+                <div id="passageDisplay" class="passage-list max-h-96 overflow-y-auto bg-slate-100 p-4 rounded-lg border border-[#cedbe8]">
+                    <p class="text-slate-500">지문을 업로드하면 여기에 목록이 표시됩니다.</p>
+                </div>
+                <p id="passageCount" class="text-sm text-[#0d141c] mt-2"></p>
+            </div>
+
+            <div id="actionArea" class="flex px-4 py-3 justify-start hidden">
+              <button
+                id="generateButton"
+                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#3490f3] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#2378d4] transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                <span class="truncate">수업노트 생성 (DOCX)</span>
+              </button>
+            </div>
+            <p class="text-xs text-slate-500 px-4 pb-3">참고: DOCX 파일에서 '서울남산체 M'와 '김남윤체'가 올바르게 표시되려면 해당 폰트가 컴퓨터에 설치되어 있어야 합니다.</p>
+
+            <div id="statusArea" class="mt-4 p-4 text-center">
+                <div id="loader" class="loader hidden"></div>
+                <p id="statusMessage" class="text-[#0d141c]"></p>
+            </div>
+
+            <div class="p-4">
+                <h3 class="text-[#0d141c] text-lg font-bold leading-tight tracking-[-0.015em] pb-2 pt-4">생성된 노트 프리뷰</h3>
+                <p class="text-[#0d141c] text-base font-normal leading-normal pb-3 pt-1">
+                생성된 수업노트의 DOCX 파일이 자동으로 다운로드됩니다. 
+                </p>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script type="module">
+        const { Packer, Document, Paragraph, TextRun, HeadingLevel, PageOrientation, PageBreak, convertInchesToTwip, Table, TableCell, TableRow, WidthType, BorderStyle, VerticalAlign, HeightRule, LineRuleType } = docx;
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadTriggerButton = document.getElementById('uploadTriggerButton'); 
+        const uploadButton = document.getElementById('uploadButton'); 
+        const apiKeyInput = document.getElementById('apiKeyInput'); // API 키 입력 필드
+        
+        const passageDisplay = document.getElementById('passageDisplay');
+        const passageSelectionArea = document.getElementById('passageSelectionArea');
+        const passageCountElement = document.getElementById('passageCount');
+        const selectAllCheckbox = document.getElementById('selectAllPassages');
+        
+        const generateButton = document.getElementById('generateButton');
+        const actionArea = document.getElementById('actionArea'); 
+        
+        const loader = document.getElementById('loader');
+        const statusMessage = document.getElementById('statusMessage');
+
+        let passageObjects = [];
+        const rainbowColors = ["C75252", "315F97", "C75252", "E9AE2B", "699B37", "358791", "D356A7"];
+        
+        const cmToTwip = (cm) => Math.round(cm * 566.929);
+
+        if (uploadTriggerButton) {
+            uploadTriggerButton.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files && fileInput.files.length > 0) {
+                    updateStatus(`선택된 파일: ${fileInput.files[0].name}. '지문 분석 시작' 버튼을 클릭하세요.`, "info");
+                }
+            });
+        }
+
+
+        if (uploadButton) {
+            uploadButton.addEventListener('click', async () => {
+                const file = fileInput.files[0];
+                if (!file) {
+                    updateStatus("먼저 '파일 업로드' 버튼을 통해 파일을 선택해주세요.", "error");
+                    return;
+                }
+                 // API 키 확인
+                if (!apiKeyInput.value.trim()) {
+                    updateStatus("Gemini API 키를 입력해주세요.", "error");
+                    apiKeyInput.focus();
+                    return;
+                }
+
+                updateStatus("파일을 읽고 지문을 분리하는 중...", "loading");
+                try {
+                    let rawText = "";
+                    if (file.name.endsWith('.txt')) {
+                        rawText = await file.text();
+                    } else if (file.name.endsWith('.docx')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                        rawText = result.value;
+                    } else {
+                        updateStatus("지원하지 않는 파일 형식입니다. .txt 또는 .docx 파일을 사용해주세요.", "error");
+                        return;
+                    }
+                    
+                    passageObjects = parsePassages(rawText);
+
+                    if (passageObjects.length === 0) {
+                        updateStatus("파일에서 지문을 추출하지 못했거나 인식할 수 있는 지문 형식이 아닙니다.", "error");
+                        passageSelectionArea.classList.add('hidden');
+                        actionArea.classList.add('hidden');
+                        return;
+                    }
+
+                    displayPassageList();
+                    passageSelectionArea.classList.remove('hidden');
+                    actionArea.classList.remove('hidden'); 
+                    updateStatus(`${passageObjects.length}개의 지문이 로드되었습니다. 생성할 지문을 선택해주세요.`, "success");
+
+                } catch (error) {
+                    console.error("File processing error:", error);
+                    updateStatus(`파일 처리 중 오류 발생: ${error.message}`, "error");
+                    passageSelectionArea.classList.add('hidden');
+                    actionArea.classList.add('hidden');
+                    passageObjects = [];
+                }
+            });
+        }
+
+        function parsePassages(rawText) {
+            const passages = [];
+            const lines = rawText.split(/\r?\n/);
+
+            let activeTopLevelPrefix = null;    
+            let activeMidLevelPrefix = null;    
+
+            let currentDisplayTitleForUI = null;
+            let currentRawTitleLinesForAI = [];
+            let currentBodyLines = [];
+
+            function finalizeAndStoreCurrentPassage() {
+                if (currentDisplayTitleForUI) {
+                    const body = currentBodyLines.join('\n').trim();
+                    if (body) { 
+                        const rawTitleForAI = currentRawTitleLinesForAI.join('\n').trim();
+                        const originalFullText = (rawTitleForAI ? rawTitleForAI + '\n' : '') + body; 
+                        passages.push({
+                            title: currentDisplayTitleForUI,
+                            body: body,
+                            originalFullText: originalFullText,
+                            selected: true
+                        });
+                    }
+                }
+                currentDisplayTitleForUI = null;
+                currentRawTitleLinesForAI = [];
+                currentBodyLines = [];
+            }
+            
+            function formatTitle(...parts) {
+                return parts.filter(p => p && String(p).trim()).join(". ");
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmedLine = line.trim();
+
+                if (trimmedLine === "") {
+                    if (currentDisplayTitleForUI) currentBodyLines.push(line);
+                    continue;
+                }
+
+                const unitPattern = /^(UNIT\s+\d+.*)$/i;
+                const numericTopPattern = /^(0\d+.*)$/i; 
+                const grammarPattern = /^\s*GRAMMAR\s+for\s+Reading\s*$/i;
+                const sooneungPattern = /^\s*수능\s+유형\s+독해(?:\s+모의고사\s+기출)?\s*$/i;
+                const miniTestPattern = /^(MINI\s+TEST\s+\d+회)$/i; 
+                const haeseokPattern = /^(해석\s*기법\s*\d+)(?:\s+(\d+))?$/i; 
+                const numberOrRangePattern = /^\s*(\d+(?:~\d+)?)\s*\.?\s*$/; 
+                const mogyGichulPattern = /^\s*모의고사\s+기출\s*$/i;
+
+                let isNewPassageLine = false;
+                let potentialDisplayTitle = null;
+                let potentialRawTitles = [trimmedLine];
+
+
+                if (unitPattern.test(trimmedLine)) {
+                    finalizeAndStoreCurrentPassage();
+                    activeTopLevelPrefix = trimmedLine;
+                    activeMidLevelPrefix = null; 
+                    potentialDisplayTitle = activeTopLevelPrefix;
+                    isNewPassageLine = true;
+                } else if (numericTopPattern.test(trimmedLine)) {
+                    finalizeAndStoreCurrentPassage();
+                    activeTopLevelPrefix = trimmedLine; 
+                    activeMidLevelPrefix = null; 
+                    potentialDisplayTitle = activeTopLevelPrefix;
+                    isNewPassageLine = true;
+                } else if (miniTestPattern.test(trimmedLine)) {
+                    finalizeAndStoreCurrentPassage();
+                    activeTopLevelPrefix = null; 
+                    activeMidLevelPrefix = trimmedLine; 
+                    potentialDisplayTitle = activeMidLevelPrefix;
+                    isNewPassageLine = true;
+                } else if (grammarPattern.test(trimmedLine) || sooneungPattern.test(trimmedLine)) {
+                    if (activeTopLevelPrefix && unitPattern.test(activeTopLevelPrefix)) {
+                        finalizeAndStoreCurrentPassage();
+                        activeMidLevelPrefix = trimmedLine;
+                        potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix);
+                        isNewPassageLine = true;
+                    } else { 
+                        if (currentDisplayTitleForUI) currentBodyLines.push(line);
+                        else { finalizeAndStoreCurrentPassage(); potentialDisplayTitle = trimmedLine; activeTopLevelPrefix = null; activeMidLevelPrefix = null; isNewPassageLine = true; }
+                    }
+                } else if (haeseokPattern.test(trimmedLine)) {
+                    const match = trimmedLine.match(haeseokPattern);
+                    const haeseokBase = match[1].trim(); 
+                    const haeseokNumFromLine = match[2] ? match[2].trim() : null;
+
+                    if (activeTopLevelPrefix && numericTopPattern.test(activeTopLevelPrefix)) { 
+                        finalizeAndStoreCurrentPassage();
+                        activeMidLevelPrefix = haeseokBase; 
+
+                        if (haeseokNumFromLine) { 
+                            const bottomPart = `${haeseokNumFromLine}번`;
+                            potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix, bottomPart);
+                            isNewPassageLine = true;
+                        } else { 
+                            if (i + 1 < lines.length && lines[i+1].trim().match(numberOrRangePattern)) { 
+                                const nextLineTrimmed = lines[i+1].trim();
+                                const nextLineNumberMatch = nextLineTrimmed.match(numberOrRangePattern);
+                                const bottomPart = `${nextLineNumberMatch[1].trim()}번`; 
+                                potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix, bottomPart);
+                                potentialRawTitles = [trimmedLine, nextLineTrimmed]; 
+                                i++; 
+                                isNewPassageLine = true;
+                            } else { 
+                                potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix);
+                                isNewPassageLine = true;
+                            }
+                        }
+                    } else { 
+                         if (currentDisplayTitleForUI) currentBodyLines.push(line); else {finalizeAndStoreCurrentPassage(); potentialDisplayTitle = trimmedLine; activeTopLevelPrefix = null; activeMidLevelPrefix = null; isNewPassageLine = true;}
+                    }
+                } else if (trimmedLine.match(numberOrRangePattern) || mogyGichulPattern.test(trimmedLine)) { 
+                    let bottomPart = trimmedLine;
+                    if (trimmedLine.match(numberOrRangePattern)) {
+                        bottomPart = `${trimmedLine.match(numberOrRangePattern)[1].trim()}번`; 
+                    }
+                    
+                    finalizeAndStoreCurrentPassage();
+                    potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix, bottomPart);
+                    isNewPassageLine = true;
+                }
+                 else { 
+                    if (currentDisplayTitleForUI) {
+                        currentBodyLines.push(line);
+                    } else { 
+                        finalizeAndStoreCurrentPassage();
+                        potentialDisplayTitle = trimmedLine;
+                        activeTopLevelPrefix = null; 
+                        activeMidLevelPrefix = null;
+                        isNewPassageLine = true;
+                    }
+                }
+
+                if (isNewPassageLine) {
+                    currentDisplayTitleForUI = potentialDisplayTitle;
+                    currentRawTitleLinesForAI = potentialRawTitles;
+                }
+            }
+            finalizeAndStoreCurrentPassage(); 
+
+            const finalPassages = passages.filter(p => p.body && p.body.trim() !== "");
+
+            if (finalPassages.length === 0 && rawText.trim() !== "") {
+                return [{
+                    title: "영어 지문 (제목 자동 감지)",
+                    body: rawText.trim(),
+                    originalFullText: rawText.trim(),
+                    selected: true
+                }];
+            }
+            return finalPassages;
+        }
+
+
+        function displayPassageList() {
+            passageDisplay.innerHTML = ""; 
+            if (passageObjects.length === 0) {
+                passageDisplay.innerHTML = '<p class="text-slate-500">표시할 지문이 없습니다.</p>';
+                passageCountElement.textContent = "";
+                if(selectAllCheckbox) selectAllCheckbox.checked = false;
+                return;
+            }
+            passageObjects.forEach((p, index) => {
+                const div = document.createElement('div');
+                div.className = 'passage-item p-3 bg-white hover:bg-slate-50 rounded-md shadow-sm'; 
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `passage-${index}`;
+                checkbox.checked = p.selected;
+                checkbox.dataset.index = index;
+                checkbox.className = 'form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500'; 
+                checkbox.addEventListener('change', (event) => {
+                    passageObjects[event.target.dataset.index].selected = event.target.checked;
+                    updateSelectAllCheckboxState();
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `passage-${index}`;
+                label.className = 'ml-3 block text-sm font-medium text-gray-700 flex-grow'; 
+                label.innerHTML = `<span class="font-semibold text-gray-900">${p.title}</span><br><span class="text-xs text-gray-500">${p.body.substring(0, 100)}...</span>`; 
+                
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                passageDisplay.appendChild(div);
+            });
+            updatePassageCount(); 
+            updateSelectAllCheckboxState();
+        }
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (event) => {
+                const isChecked = event.target.checked;
+                passageObjects.forEach(p => p.selected = isChecked);
+                const checkboxes = passageDisplay.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => cb.checked = isChecked);
+                updatePassageCount();
+            });
+        }
+
+        function updateSelectAllCheckboxState() {
+            if (!selectAllCheckbox) return;
+            const allSelected = passageObjects.length > 0 && passageObjects.every(p => p.selected);
+            const someSelected = passageObjects.some(p => p.selected);
+            selectAllCheckbox.checked = allSelected;
+            selectAllCheckbox.indeterminate = !allSelected && someSelected;
+            updatePassageCount();
+        }
+        
+        function updatePassageCount() {
+            if (passageCountElement) {
+                 passageCountElement.textContent = `총 ${passageObjects.length}개의 지문 중 ${passageObjects.filter(p => p.selected).length}개 선택됨.`;
+            }
+        }
+
+        if (generateButton) {
+            generateButton.addEventListener('click', async () => {
+                const selectedPassages = passageObjects.filter(p => p.selected);
+                const startTime = performance.now(); 
+
+                if (selectedPassages.length === 0) {
+                    updateStatus("수업노트를 생성할 지문을 선택해주세요.", "error");
+                    return;
+                }
+                // API 키 확인 (사용자 입력 방식)
+                const userApiKey = apiKeyInput.value.trim();
+                if (!userApiKey && !document.getElementById('serverless-mode-checkbox')?.checked) { // 서버리스 모드가 아닐 때만 키 확인
+                    updateStatus("Gemini API 키를 입력해주세요.", "error");
+                    apiKeyInput.focus();
+                    return;
+                }
+                updateStatus(`AI가 선택된 ${selectedPassages.length}개 지문에 대한 수업노트 내용을 생성 중입니다... 잠시만 기다려주세요.`, "loading");
+
+                const docSections = [];
+                const fontEnglish = "서울남산체 M"; 
+                const fontKorean = "김남윤체";   
+                const lineSpacingValue = 204; 
+
+                for (let i = 0; i < selectedPassages.length; i++) {
+                    const passageObj = selectedPassages[i];
+                    updateStatus(`(${i+1}/${selectedPassages.length}) 지문 처리 중: "${passageObj.title.substring(0,20)}..."`, "loading");
+                    try {
+                        const aiData = await getAIData(passageObj.originalFullText); 
+                        if (!aiData) {
+                            console.error(`AI 데이터 생성 실패: ${passageObj.title}`);
+                            continue; 
+                        }
+
+                        const pageContentTable = createPageContentForDocx(passageObj.body, aiData, passageObj.title, fontEnglish, fontKorean, lineSpacingValue);
+                        
+                        if (i > 0) { 
+                            docSections.push(new Paragraph({children: [new PageBreak()]}));
+                        }
+                        docSections.push(pageContentTable); 
+
+                    } catch (error) {
+                        console.error(`Error processing passage "${passageObj.title}":`, error);
+                        updateStatus(`지문 "${passageObj.title}" 처리 중 오류 발생: ${error.message}`, "error");
+                    }
+                }
+                
+                if (docSections.length === 0) {
+                    updateStatus("생성할 내용이 없습니다. AI 분석에 실패했거나 선택된 지문이 없습니다.", "error");
+                    return;
+                }
+
+                updateStatus("모든 선택된 지문 처리 완료! DOCX 파일 생성 중...", "loading");
+                
+                const doc = new Document({
+                    creator: "HighSchoolEnglishTeacherAI",
+                    title: "영어 수업노트", 
+                    description: "AI 생성 영어 수업자료",
+                    styles: {
+                        default: {
+                            paragraph: { 
+                                spacing: { line: lineSpacingValue, lineRule: LineRuleType.AUTO }, 
+                            },
+                            document: { run: { size: 20, font: fontEnglish, color: "000000" } }, 
+                        },
+                        paragraphStyles: [
+                            { id: "englishStyle", name: "English Style", basedOn: "Normal", run: { font: fontEnglish, size: 20, color: "000000" }, paragraph: { spacing: { line: lineSpacingValue, lineRule: LineRuleType.AUTO } } }, 
+                            { id: "koreanStyle", name: "Korean Style", basedOn: "Normal", run: { font: fontKorean, size: 20, color: "000000" }, paragraph: { spacing: { line: lineSpacingValue, lineRule: LineRuleType.AUTO } } }, 
+                            { 
+                                id: "koreanSectionTitleStyle", 
+                                name: "Korean Section Title Style",
+                                basedOn: "Normal",
+                                next: "Normal",
+                                quickFormat: true,
+                                run: { font: fontKorean, size: 22, bold: true, color: "000000" }, 
+                                paragraph: { spacing: { before: 120, after: 60, line: lineSpacingValue, lineRule: LineRuleType.AUTO } }, 
+                            },
+                             { 
+                                id: "englishPassageTitleStyle", 
+                                name: "English Passage Title Style",
+                                basedOn: "Normal",
+                                next: "Normal",
+                                quickFormat: true,
+                                run: { font: fontEnglish, size: 22, bold: true, color: "000000" }, 
+                                paragraph: { spacing: { after: 100, line: lineSpacingValue, lineRule: LineRuleType.AUTO } },
+                            },
+                        ],
+                    },
+                    sections: [{ 
+                        properties: {
+                            page: {
+                                size: { orientation: PageOrientation.PORTRAIT, width: convertInchesToTwip(8.27), height: convertInchesToTwip(11.69) }, 
+                                margin: { 
+                                    top: cmToTwip(1.5), 
+                                    right: cmToTwip(1.5), 
+                                    bottom: cmToTwip(1.5), 
+                                    left: cmToTwip(1.5) 
+                                },
+                            },
+                        },
+                        children: docSections, 
+                    }],
+                });
+
+                Packer.toBlob(doc).then(blob => {
+                    const endTime = performance.now(); 
+                    const duration = ((endTime - startTime) / 1000).toFixed(2); 
+
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    const firstSelectedTitle = selectedPassages.length > 0 ? selectedPassages[0].title : "다중지문";
+                    const downloadFileName = selectedPassages.length > 1 ? `수업노트_선택된_지문들.docx` : `수업노트_${firstSelectedTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.docx`;
+                    link.download = downloadFileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                    updateStatus(`수업노트(DOCX)가 성공적으로 생성되어 다운로드됩니다. (생성 시간: ${duration}초)`, "success");
+                }).catch(err => {
+                    console.error("Error packing DOCX:", err);
+                    updateStatus("DOCX 파일 패킹 중 오류 발생.", "error");
+                });
+            });
+        }
+        
+        async function getAIData(fullPassageForAI) {
+            const userApiKey = apiKeyInput.value.trim(); 
+            if (!userApiKey) { // 서버리스 모드가 아니라면 항상 키를 확인
+                updateStatus("Gemini API 키를 입력해주세요.", "error");
+                if(apiKeyInput) apiKeyInput.focus(); // apiKeyInput이 존재할 때만 focus
+                throw new Error("API key is missing.");
+            }
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    keywords: { 
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                english: { "type": "STRING", "description": "A key English vocabulary word, idiom, or short essential phrase from the passage. Avoid long clauses." },
+                                korean: { "type": "STRING", "description": "The KOREAN TRANSLATION for the English keyword/idiom/phrase, exactly as it should be highlighted in 'direct_translation_korean'. This must be the precise morphological form used. Avoid long clauses." }
+                            },
+                            required: ["english", "korean"]
+                        },
+                        description: "List of 20 key English vocabulary items (words, idioms, short essential phrases) and their direct Korean translations. The Korean translation MUST be the exact segment to be highlighted in the 'direct_translation_korean'."
+                    },
+                    free_translation_korean: {
+                        type: "STRING",
+                        description: "Natural Korean free translation (의역) of the entire passage (excluding the first line if it was a title)."
+                    },
+                    direct_translation_korean: {
+                        type: "STRING",
+                        description: "Literal Korean direct translation (직역) of the entire passage (excluding the first line if it was a title). This translation MUST be entirely in PURE KOREAN TEXT, without any HTML tags like <br> or markdown. Each English sentence should ideally correspond to one Korean sentence in the direct translation. It MUST use the KOREAN translations of the keywords (exactly as provided in the 'korean' field of the 'keywords' objects) for highlighting. CRITICALLY IMPORTANT: This field must NOT contain any English words, phrases, or characters. It must be PURELY KOREAN. For example, do NOT include '(No Standing)' in English; translate it to Korean like '(주차 금지)' or similar appropriate Korean phrasing if it's part of the direct translation context."
+                    },
+                    theme: {
+                        type: "OBJECT",
+                        properties: {
+                            english: { "type": "STRING", "description": "Concise English theme of the passage (based on the main body, not the title)." },
+                            korean: { "type": "STRING", "description": "Concise Korean theme of the passage (based on the main body, not the title)." }
+                        },
+                        required: ["english", "korean"]
+                    },
+                    quiz1: {
+                        type: "OBJECT",
+                        properties: {
+                            question: { "type": "STRING", "description": "A multiple-choice question in KOREAN about the content of the passage. Example: '다음 지문의 내용과 일치하지 않는 것은 무엇입니까?' Ensure the question is in KOREAN." },
+                            options: {
+                                type: "ARRAY",
+                                items: { "type": "STRING" },
+                                description: "Array of 5 string options in ENGLISH for quiz 1. Each option should be a statement in English."
+                            },
+                            false_statement_index: { 
+                                type: "INTEGER", 
+                                description: "0-indexed integer indicating which of the 5 English options is the false statement." 
+                            },
+                            explanation: { "type": "STRING", "description": "A brief explanation in KOREAN for why the chosen answer is correct (i.e., why the false statement is false)."}
+                        },
+                        required: ["question", "options", "false_statement_index", "explanation"]
+                    },
+                    quiz2: {
+                        type: "OBJECT",
+                        properties: {
+                            summary_sentence_template: { "type": "STRING", "description": "A summary sentence of the passage in ENGLISH with {A} and {B} as placeholders. Example: 'This passage emphasizes the importance of {A} and the impact of {B}.' Ensure the summary sentence is in ENGLISH." },
+                            blank_options: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        A: { "type": "STRING", "description": "An ENGLISH word for blank A. This word MUST be the 'english' part of one of the 'keywords' objects." },
+                                        B: { "type": "STRING", "description": "An ENGLISH word for blank B. This word MUST be the 'english' part of one of the 'keywords' objects." }
+                                    },
+                                    required: ["A", "B"]
+                                },
+                                description: "Array of 5 pairs of ENGLISH words for blanks (A) and (B). These words must be from the 'english' part of the 'keywords' objects."
+                            },
+                            correct_pair_index: { 
+                                type: "INTEGER", 
+                                description: "0-indexed integer indicating the correct English pair in blank_options."
+                            },
+                            explanation: { "type": "STRING", "description": "A brief explanation in KOREAN for why the chosen pair of words is correct for the summary sentence."}
+                        },
+                        required: ["summary_sentence_template", "blank_options", "correct_pair_index", "explanation"]
+                    }
+                },
+                required: ["keywords", "free_translation_korean", "direct_translation_korean", "theme", "quiz1", "quiz2"]
+            };
+
+            const prompt = `You are an expert English teacher AI assistant. For the following English passage (where the first line might be a title and the rest is the body), provide the requested information in JSON format according to the schema.
+The translations, theme, and keywords should be based on the main body of the passage, excluding the first line if it's just a title.
+
+IMPORTANT INSTRUCTION FOR 'keywords':
+Focus on selecting key vocabulary items: individual words, important idioms, or very short essential phrasal verbs. Avoid selecting long clauses or entire sentences as keywords.
+For each selected English keyword/item, provide a KOREAN translation in the 'korean' field. This Korean translation MUST be the EXACT word or phrase, including any grammatical endings or particles, that will be highlighted in the 'direct_translation_korean' field. The Korean keyword MUST perfectly match a segment in the 'direct_translation_korean' for highlighting.
+For example:
+- English keyword: 'invite', Korean keyword in direct translation context: '초대하기' or '초대합니다'.
+- English keyword: 'look forward to', Korean keyword in direct translation context: '기대합니다' or '고대하고 있다'.
+Ensure the 'korean' keyword is a substring that exists exactly in the 'direct_translation_korean'.
+
+All Korean text for translations, theme, and quiz explanations should be natural and grammatically correct.
+
+IMPORTANT INSTRUCTIONS FOR QUIZZES:
+- Quiz 1 question (quiz1.question) MUST be in KOREAN.
+- Quiz 2 summary sentence template (quiz2.summary_sentence_template) MUST be in ENGLISH. This is the sentence with {A} and {B} placeholders.
+- All quiz options (quiz1.options and quiz2.blank_options) MUST be in ENGLISH.
+- All quiz explanations (quiz1.explanation and quiz2.explanation) MUST be in KOREAN.
+
+CRITICALLY IMPORTANT INSTRUCTION FOR 'direct_translation_korean':
+The 'direct_translation_korean' (직역) field MUST be entirely in PURE KOREAN TEXT.
+ABSOLUTELY NO HTML tags (like <br>), markdown, or any English words, phrases, or characters are allowed in this field.
+Translate each English sentence of the passage into a corresponding single Korean sentence as much as possible, maintaining a literal translation style. Avoid breaking one English sentence into multiple Korean sentences unless absolutely necessary for naturalness.
+It MUST use the KOREAN translations of the keywords (exactly as provided in the 'korean' field of the 'keywords' objects) for highlighting.
+For example, if the original passage contains "No Standing", do NOT include the English phrase "(No Standing)" in the 'direct_translation_korean'. Instead, translate it fully into Korean, such as "(주차 금지)" or an equivalent appropriate Korean phrase if it is part of the direct translation context.
+
+Passage:
+"${fullPassageForAI}"
+
+Provide JSON output only.`;
+            
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = {
+                contents: chatHistory,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${userApiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error("API Error Response:", errorBody);
+                    throw new Error(`AI API request failed with status ${response.status}: ${errorBody}`);
+                }
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonText = result.candidates[0].content.parts[0].text;
+                    try {
+                        let parsedJson = JSON.parse(jsonText);
+                        if (parsedJson.direct_translation_korean) {
+                            parsedJson.direct_translation_korean = parsedJson.direct_translation_korean.replace(/<br\s*\/?>/gi, " ").replace(/\s+/g, ' ').trim();
+                        }
+
+                        if (!parsedJson.keywords || !Array.isArray(parsedJson.keywords) || parsedJson.keywords.length === 0 ||
+                            !parsedJson.keywords.every(kw => typeof kw === 'object' && kw.english && kw.korean)) {
+                            console.error("AI returned invalid structure for keywords:", parsedJson.keywords);
+                            throw new Error("AI returned invalid structure for 'keywords'. Expected array of {english, korean} objects.");
+                        }
+                        if (!parsedJson.quiz1 || !parsedJson.quiz1.explanation || !parsedJson.quiz2 || !parsedJson.quiz2.explanation) {
+                             console.error("AI did not return explanations for quizzes:", parsedJson);
+                            throw new Error("AI response is missing quiz explanations.");
+                        }
+                        if (parsedJson.direct_translation_korean) {
+                            if (/[a-zA-Z]/.test(parsedJson.direct_translation_korean)) {
+                                console.warn("AI response for 'direct_translation_korean' might still contain English characters:", parsedJson.direct_translation_korean);
+                            }
+                            parsedJson.direct_translation_korean = parsedJson.direct_translation_korean.replace(/\*\*/g, '');
+                        }
+                        return parsedJson;
+                    } catch (e) {
+                        console.error("Failed to parse JSON from AI or invalid data structure:", jsonText, e);
+                        throw new Error(`AI returned invalid JSON or data structure: ${e.message}`);
+                    }
+                } else {
+                    console.error("Unexpected AI response structure:", result);
+                    throw new Error("AI response structure was unexpected or content was missing.");
+                }
+            } catch (error) {
+                console.error("Error calling AI API:", error);
+                throw error; 
+            }
+        }
+
+        function updateStatus(message, type = "info") { 
+            statusMessage.textContent = message;
+            if (type === "loading") {
+                loader.classList.remove('hidden');
+                statusMessage.className = 'text-blue-600 font-semibold'; 
+            } else {
+                loader.classList.add('hidden');
+                if (type === "success") statusMessage.className = 'text-green-600 font-semibold';
+                else if (type === "error") statusMessage.className = 'text-red-600 font-semibold';
+                else statusMessage.className = 'text-[#0d141c]'; 
+            }
+        }
+        
+       function createHighlightedTextRuns(text, keywordDetails, baseFont, highlightFontForEnglish, highlightFontForKorean, isEnglishPassage) {
+            const runs = [];
+            let lastIndex = 0;
+            const bodyFontSize = 20; 
+
+            if (!text || text.trim() === "") { 
+                return [new TextRun({ text: "", font: baseFont, size: bodyFontSize, color: "000000" })]; 
+            }
+            if (!keywordDetails || keywordDetails.length === 0) {
+                return [new TextRun({ text: text, font: baseFont, size: bodyFontSize, color: "000000" })]; 
+            }
+
+            const englishKeywordColorMap = new Map();
+            keywordDetails.slice(0, 20).forEach((kd, i) => {
+                if (kd && typeof kd.english === 'string') { 
+                    englishKeywordColorMap.set(kd.english.toLowerCase(), rainbowColors[i % rainbowColors.length]);
+                }
+            });
+
+            let searchTerms = [];
+            if (isEnglishPassage) { 
+                keywordDetails.forEach(kd => {
+                    if (kd && typeof kd.english === 'string') { 
+                        const color = englishKeywordColorMap.get(kd.english.toLowerCase());
+                        if (color) {
+                            searchTerms.push({
+                                text: kd.english,
+                                color: color, 
+                                font: highlightFontForEnglish 
+                            });
+                        }
+                    }
+                });
+            } else { 
+                keywordDetails.forEach(kd => {
+                    if (kd && typeof kd.english === 'string' && typeof kd.korean === 'string') { 
+                        const color = englishKeywordColorMap.get(kd.english.toLowerCase()); 
+                        if (color && kd.korean.trim() !== "") { 
+                            searchTerms.push({
+                                text: kd.korean, 
+                                color: color, 
+                                font: highlightFontForKorean 
+                            });
+                        }
+                    }
+                });
+            }
+            
+            searchTerms = searchTerms.filter(st => st.text && st.text.trim() !== '').sort((a, b) => b.text.length - a.text.length);
+
+            if (searchTerms.length === 0) {
+                return [new TextRun({ text: text, font: baseFont, size: bodyFontSize, color: "000000" })]; 
+            }
+            
+            const keywordRegex = new RegExp(`(${searchTerms.map(st => st.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+            
+            let match;
+            const allMatches = [];
+            while ((match = keywordRegex.exec(text)) !== null) {
+                allMatches.push({ index: match.index, matchedText: match[0] });
+            }
+            allMatches.sort((a, b) => a.index - b.index); 
+
+            for (const currentMatch of allMatches) {
+                if (currentMatch.index < lastIndex) continue; 
+
+                const matchedTermObject = searchTerms.find(st => st.text.toLowerCase() === currentMatch.matchedText.toLowerCase());
+
+                if (currentMatch.index > lastIndex) {
+                    runs.push(new TextRun({ text: text.substring(lastIndex, currentMatch.index), font: baseFont, size: bodyFontSize, color: "000000" })); 
+                }
+                
+                if (matchedTermObject) {
+                    runs.push(new TextRun({
+                        text: currentMatch.matchedText, 
+                        font: matchedTermObject.font,
+                        color: matchedTermObject.color, 
+                        size: bodyFontSize, 
+                        bold: true
+                    }));
+                } else { 
+                     runs.push(new TextRun({ text: currentMatch.matchedText, font: baseFont, size: bodyFontSize, color: "000000" })); 
+                }
+                lastIndex = currentMatch.index + currentMatch.matchedText.length;
+            }
+
+            if (lastIndex < text.length) {
+                runs.push(new TextRun({ text: text.substring(lastIndex), font: baseFont, size: bodyFontSize, color: "000000" })); 
+            }
+
+            return runs.length > 0 ? runs : [new TextRun({ text: text, font: baseFont, size: bodyFontSize, color: "000000" })]; 
+        }
+
+        function createPageContentForDocx(passageBody, aiData, docTitle, fontEnglish, fontKorean, lineSpacing) {
+            const finalKeywordDetails = aiData.keywords ? aiData.keywords.slice(0, 20) : [];
+            const titleFontSize = 22; 
+            const bodyFontSize = 20; 
+
+            const pageWidthInTwips = convertInchesToTwip(8.27); 
+            const marginSizeInTwips = cmToTwip(1.5); 
+            const availableTableWidth = pageWidthInTwips - (2 * marginSizeInTwips);
+
+            const firstCellWidth = Math.floor(availableTableWidth / 2);
+            const secondCellWidth = availableTableWidth - firstCellWidth; 
+
+            const leftCellChildren = [
+                new Paragraph({ 
+                    children: [new TextRun({ text: docTitle, font: fontEnglish, size: titleFontSize, bold: true })], 
+                    style: "englishPassageTitleStyle", 
+                    spacing: { after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                new Paragraph({ 
+                    children: createHighlightedTextRuns(passageBody, finalKeywordDetails, fontEnglish, fontEnglish, fontKorean, true),
+                    spacing: { after: 200, line: lineSpacing, lineRule: LineRuleType.AUTO },
+                    style: "englishStyle" 
+                }),
+                new Paragraph({ 
+                    children: [new TextRun({text: ""})],
+                    spacing: {before: 1000, line: lineSpacing, lineRule: LineRuleType.AUTO} 
+                }),
+                new Paragraph({ 
+                    children: [new TextRun({ text: "▼ 의역", font: fontKorean, size: titleFontSize, bold: true })],
+                    style: "koreanSectionTitleStyle", 
+                    spacing: { before: 150, after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO } 
+                }),
+                new Paragraph({ 
+                    text: aiData.free_translation_korean,
+                    style: "koreanStyle", 
+                    spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+            ];
+
+            const rightCellChildren = [
+                new Paragraph({ 
+                    children: [new TextRun({ text: "▶ 직역", font: fontKorean, size: titleFontSize, bold: true })],  
+                    style: "koreanSectionTitleStyle",
+                    spacing: { after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                new Paragraph({  
+                    children: createHighlightedTextRuns(aiData.direct_translation_korean, finalKeywordDetails, fontKorean, fontEnglish, fontKorean, false),
+                    spacing: { after: 200, line: lineSpacing, lineRule: LineRuleType.AUTO },
+                    style: "koreanStyle" 
+                }),
+                new Paragraph({ 
+                    children: [new TextRun({ text: "▲ 주제", font: fontKorean, size: titleFontSize, bold: true })], 
+                    style: "koreanSectionTitleStyle",
+                    spacing: { before: 300, after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                new Paragraph({ 
+                    children: [
+                        new TextRun({ text: "English: ", bold: true, font: fontEnglish, size: bodyFontSize }),
+                        new TextRun({ text: aiData.theme.english, font: fontEnglish, size: bodyFontSize })
+                    ],
+                    style: "englishStyle",
+                    spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                new Paragraph({ 
+                    children: [
+                        new TextRun({ text: "Korean: ", bold: true, font: fontKorean, size: bodyFontSize }),
+                        new TextRun({ text: aiData.theme.korean, font: fontKorean, size: bodyFontSize })
+                    ],
+                    spacing: { after: 200, line: lineSpacing, lineRule: LineRuleType.AUTO },
+                    style: "koreanStyle"
+                }),
+                new Paragraph({ 
+                    children: [new TextRun({ text: "△ 출제 예상 문제", font: fontKorean, size: titleFontSize, bold: true })], 
+                    style: "koreanSectionTitleStyle",
+                    spacing: { before: 300, after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                new Paragraph({ 
+                    children: [new TextRun({ text: `1. ${aiData.quiz1.question}`, font: fontKorean, size: bodyFontSize, bold:true })],
+                    spacing: { after: 80, line: lineSpacing, lineRule: LineRuleType.AUTO },
+                    style: "koreanStyle"
+                }),
+                ...aiData.quiz1.options.map((opt, index) => new Paragraph({  
+                    children: [
+                        new TextRun({text: `   (${index + 1}) ${opt}`, font: fontEnglish, size: bodyFontSize}),
+                        index === aiData.quiz1.false_statement_index ? new TextRun({text: " (정답)", font: fontKorean, size: bodyFontSize, color: "FF0000", italics: true}) : new TextRun({text:""}) 
+                    ],
+                    style: "englishStyle",
+                    spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO }
+                })),
+                new Paragraph({ 
+                    children: [
+                        new TextRun({text: "   해설: ", font: fontKorean, size: bodyFontSize, bold: true, italics: true}),
+                        new TextRun({text: aiData.quiz1.explanation, font: fontKorean, size: bodyFontSize, italics: true})
+                    ],
+                    style: "koreanStyle", 
+                    spacing: { before: 40, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                new Paragraph({ spacing: { after: 150, line: lineSpacing, lineRule: LineRuleType.AUTO } }), 
+                new Paragraph({ 
+                    children: [new TextRun({ text: `2. 다음은 지문을 요약한 문장입니다. 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은 무엇입니까?`, font: fontKorean, size: bodyFontSize, bold:true })],
+                    spacing: { after: 80, line: lineSpacing, lineRule: LineRuleType.AUTO },
+                    style: "koreanStyle"
+                }),
+                new Paragraph({ 
+                    text: `   "${aiData.quiz2.summary_sentence_template}"`,
+                    style: "englishStyle",
+                    spacing: { after: 80, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+                ...aiData.quiz2.blank_options.map((pair, index) => new Paragraph({ 
+                    children: [
+                        new TextRun({text: `   (${index + 1}) (A) ${pair.A} - (B) ${pair.B}`, font: fontEnglish, size: bodyFontSize}),
+                        index === aiData.quiz2.correct_pair_index ? new TextRun({text: " (정답)", font: fontKorean, size: bodyFontSize, color: "008000", italics: true}) : new TextRun({text:""}) 
+                    ],
+                    style: "englishStyle",
+                    spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO }
+                })),
+                new Paragraph({ 
+                    children: [
+                        new TextRun({text: "   해설: ", font: fontKorean, size: bodyFontSize, bold: true, italics: true}),
+                        new TextRun({text: aiData.quiz2.explanation, font: fontKorean, size: bodyFontSize, italics: true})
+                    ],
+                    style: "koreanStyle", 
+                    spacing: { before: 40, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                }),
+            ];
+
+            return new Table({ 
+                rows: [
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                children: leftCellChildren,
+                                width: { size: firstCellWidth, type: WidthType.DXA }, 
+                                verticalAlign: VerticalAlign.TOP,
+                                borders: { 
+                                    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    right: { style: BorderStyle.SINGLE, size: 6, color: "D3D3D3" }, 
+                                },
+                                margins: { right: convertInchesToTwip(0.1) }
+                            }),
+                            new TableCell({
+                                children: rightCellChildren,
+                                width: { size: secondCellWidth, type: WidthType.DXA }, 
+                                verticalAlign: VerticalAlign.TOP,
+                                borders: { 
+                                    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+                                },
+                                margins: { left: convertInchesToTwip(0.1)}
+                            }),
+                        ],
+                        height: { rule: HeightRule.ATLEAST, value: convertInchesToTwip(9) } 
+                    }),
+                ],
+                width: { size: availableTableWidth, type: WidthType.DXA }, 
+            });
+        }
+    </script>
+</body>
+</html>
