@@ -729,21 +729,20 @@
                         properties: {
                             question: { 
                                 "type": "STRING", 
-                                "description": "This field should ONLY contain the Korean string '[내용일치]'." 
+                                "description": "This field should ONLY contain the Korean string '[내용불일치]'." 
                             },
                             options: {
                                 type: "ARRAY",
                                 items: { "type": "STRING" },
-                                description: "Array of 5 string options in ENGLISH for quiz 1."
+                                description: "Array of 5 string options in ENGLISH for quiz 1, generated according to the detailed prompt for quiz1.options." // Reference to detailed prompt
                             },
                             false_statement_index: { 
                                 type: "INTEGER", 
-                                description: "0-indexed integer indicating which of the 5 English options is the false statement." 
+                                description: "0-indexed integer indicating which of the 5 English options is the distractor (the false statement)." 
                             },
                             explanation: { 
                                 "type": "STRING", 
-                                // MODIFIED: Request concise, core explanation for quiz 1
-                                "description": "A CONCISE explanation in KOREAN for quiz 1. Briefly state why the identified 'false_statement_index' option is false based on THE MAIN BODY of the passage. If possible, also very briefly state why the correct answer (implicitly, the other options) is true or not contradicted. Focus on core reasons."
+                                "description": "A CONCISE explanation in KOREAN for quiz 1, as per the detailed prompt for quiz1.explanation." // Reference to detailed prompt
                             }
                         },
                         required: ["question", "options", "false_statement_index", "explanation"]
@@ -757,7 +756,7 @@
                             },
                             summary_sentence_template: { 
                                 type: "STRING", 
-                                description: "A concise summary sentence STRICTLY IN ENGLISH ONLY (ABSOLUTELY NO KOREAN CHARACTERS OR KOREAN TEXT ALLOWED WHATSOEVER), encapsulating THE CORE MESSAGE or MAIN IDEA of THE MAIN BODY of the passage. This summary MUST use {A} and {B} as placeholders for two distinct, single, CORE KEYWORDS IN ENGLISH (important concepts from the passage's main body, ideally chosen from the more significant terms among 'keywords.english'). Example: 'The author's central argument is that {A} is crucial for understanding {B} in modern society.'" 
+                                description: "A concise summary sentence STRICTLY IN ENGLISH ONLY, as per the detailed prompt for quiz2.summary_sentence_template." // Reference to detailed prompt
                             },
                             blank_options: {
                                 type: "ARRAY",
@@ -769,7 +768,7 @@
                                     },
                                     required: ["A", "B"]
                                 },
-                                description: "Array of 5 pairs of single ENGLISH words for blanks (A) and (B) from 'keywords.english'."
+                                description: "Array of 5 pairs of single ENGLISH words for blanks (A) and (B), as per the detailed prompt for quiz2.blank_options." // Reference to detailed prompt
                             },
                             correct_pair_index: { 
                                 type: "INTEGER", 
@@ -777,8 +776,7 @@
                             },
                             explanation: { 
                                 "type": "STRING", 
-                                // MODIFIED: Request concise, core explanation for quiz 2
-                                "description": "A CONCISE explanation in KOREAN for quiz 2. Briefly state why the 'correct_pair_index' words ({A} and {B}) accurately complete the 'summary_sentence_template' by referencing how they reflect THE MAIN BODY of the passage's core message. Focus on core reasons."
+                                "description": "A CONCISE explanation in KOREAN for quiz 2, as per the detailed prompt for quiz2.explanation." // Reference to detailed prompt
                             }
                         },
                         required: ["question_text", "summary_sentence_template", "blank_options", "correct_pair_index", "explanation"]
@@ -811,11 +809,13 @@ IMPORTANT INSTRUCTION FOR 'hashtags':
 From your 'keywords' list (derived from THE MAIN BODY), select the 10 MOST IMPORTANT English terms. Convert them to hashtags (e.g., #example).
 
 QUIZZES (Based on THE MAIN BODY):
-- quiz1.question: This field MUST ONLY contain the exact Korean string: '[내용일치]'
-- quiz1.explanation: This explanation MUST be in KOREAN and CONCISELY detail *why* the chosen false statement is false according to THE MAIN BODY, and very briefly why other options are not false. Focus on the absolute core reasoning.
+- quiz1.question: This field MUST ONLY contain the exact Korean string: '[내용불일치]'
+- quiz1.options: Provide me with 5 answer choices, which start with small letters, using ①,②,③,④,⑤ in numerical order. Each choice should succinctly summarize information from different parts of the passage in a concise manner. Make sure to adhere to proper grammar rules including starting people's names with capital letters. Please include one distractor that subtly deviates from the correct information in the passage, making it slightly incorrect and potentially confusing for students. The distractor should be placed at a random position among the 5 options (①, ②, ③, ④, ⑤) with equal likelihood of it appearing in any position.
+- quiz1.explanation: This explanation MUST be in KOREAN and CONCISELY detail *why* the chosen false statement (the distractor) is false according to THE MAIN BODY. After providing the answer choices, please identify the distractor and explain why it is the distractor. Focus on the absolute core reasoning.
 - quiz2.question_text: This field MUST ONLY contain the exact Korean string: '[요약]'
-- quiz2.summary_sentence_template: CRITICAL INSTRUCTION: This field MUST be a concise summary sentence **WRITTEN EXCLUSIVELY AND STRICTLY IN ENGLISH. IT MUST NOT CONTAIN ANY KOREAN CHARACTERS OR KOREAN TEXT WHATSOEVER, UNDER ANY CIRCUMSTANCES.** It should encapsulate THE CORE MESSAGE or MAIN IDEA of THE MAIN BODY. The placeholders {A} and {B} MUST represent two distinct, single, CORE KEYWORDS/CONCEPTS IN ENGLISH that are central to understanding this main idea.
-- quiz2.explanation: This explanation MUST be in KOREAN and CONCISELY detail *why* the chosen pair of words for (A) and (B) correctly completes the English summary sentence by referencing how they reflect THE MAIN BODY's core message. Focus on the absolute core reasoning.
+- quiz2.summary_sentence_template: CRITICAL INSTRUCTION: Generate a summary of the given passage with two blanks (A) and (B), ensuring the summary accurately represents the main points and is **WRITTEN EXCLUSIVELY AND STRICTLY IN ENGLISH. IT MUST NOT CONTAIN ANY KOREAN CHARACTERS OR KOREAN TEXT WHATSOEVER, UNDER ANY CIRCUMSTANCES.** The (A) should be derived from the first half and (B) from the second half of the summary if possible. The chosen keywords for (A) and (B) should centralize the text's message. (A) and (B) should keep a distance enough so that they aren't aligned very close each other.
+- quiz2.blank_options: Provide five options with one correct choice and the rest being distractors. The options may have (A) correct but (B) wrong, or vice versa, or both incorrect. Each option should consist of only one word, laid out with (A) and (B) as shown in the schema.
+- quiz2.explanation: This explanation MUST be in KOREAN and CONCISELY detail *why* the chosen pair of words for (A) and (B) correctly completes the English summary sentence by referencing how they reflect THE MAIN BODY's core message. Provide the correct option and the reasoning for it. Focus on the absolute core reasoning.
 
 All other Korean text (theme.korean) must be natural and grammatically correct Korean, based on THE MAIN BODY.
 
@@ -1096,7 +1096,7 @@ Provide JSON output only.`;
             const quizAnswerKoreanFontSize = 18; 
             const quizLineSpacing = Math.round(240 * 0.9); 
 
-            const quizNumbering = ['①', '②', '③', '④', '⑤'];
+            const quizNumbering = ['①', '②', '③', '④', '⑤']; // This is for Quiz 2 options if needed, Quiz 1 options should come with numbering from AI
 
             const pageWidthInTwips = convertInchesToTwip(8.27); 
             const pageMarginInTwips = cmToTwip(1.5); 
@@ -1113,7 +1113,6 @@ Provide JSON output only.`;
                     spacing: { after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
                 }),
                 new Paragraph({ 
-                    // Corrected: Ensure isEnglishPassage is true for the English passage.
                     children: createHighlightedTextRuns(passageBody, finalKeywordDetails, fontEnglish, fontEnglish, fontKorean, true),
                     style: "englishStyle",
                     spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO } 
@@ -1223,13 +1222,14 @@ Provide JSON output only.`;
                     spacing: { before: 120, after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO } 
                 }),
                 new Paragraph({ 
-                    children: [new TextRun({ text: `1. ${aiData.quiz1.question || '[내용일치]'}`, font: fontKorean, size: bodyFontSize, bold:true })], 
+                    children: [new TextRun({ text: `1. ${aiData.quiz1.question || '[내용불일치]'}`, font: fontKorean, size: bodyFontSize, bold:true })], 
                     spacing: { after: 80, line: quizLineSpacing, lineRule: LineRuleType.AUTO }, 
                     style: "koreanStyle"
                 }),
                 ...(aiData.quiz1.options || []).map((opt, index) => new Paragraph({  
                     children: [
-                        new TextRun({text: `   ${quizNumbering[index] || (index+1)+'.'} ${opt}`, font: fontEnglish, size: quiz1OptionFontSize}), 
+                        // MODIFIED: Removed explicit numbering, assuming AI provides it in 'opt'
+                        new TextRun({text: `   ${opt}`, font: fontEnglish, size: quiz1OptionFontSize}), 
                         index === aiData.quiz1.false_statement_index ? new TextRun({text: " (정답)", font: fontKorean, size: quiz1OptionFontSize, color: "FF0000", italics: true}) : new TextRun({text:""}) 
                     ],
                     style: "englishStyle",
