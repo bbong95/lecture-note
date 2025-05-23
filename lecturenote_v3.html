@@ -230,7 +230,8 @@
         const statusMessage = document.getElementById('statusMessage');
 
         let passageObjects = []; // Stores parsed passage data
-        const rainbowColors = ["C75252", "315F97", "C75252", "E9AE2B", "699B37", "358791", "D356A7"]; // Colors for keyword highlighting
+        const rainbowColors = ["C75252", "315F97", "E9AE2B", "699B37", "358791", "D356A7", "8A4E9E", "4A4A4A", "D07C3E", "00796B"]; // Expanded rainbow colors for more keywords
+
         
         // Utility to convert cm to twips (used for DOCX measurements)
         const cmToTwip = (cm) => Math.round(cm * 566.929);
@@ -706,9 +707,9 @@
                         type: "STRING",
                         description: "Natural Korean free translation (의역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. Focus on conveying the meaning naturally in Korean, even if it means restructuring sentences."
                     },
-                    direct_translation_korean: {
+                    direct_translation_korean: { 
                         type: "STRING",
-                        description: "Literal Korean direct translation (직역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. Each English sentence of THE MAIN BODY should correspond to one complete Korean sentence, maintaining the original sentence structure as much as possible while being grammatically correct in Korean. Avoid awkward breaks or overly literal translations that sound unnatural. This field should primarily be PURE KOREAN. However, it MAY INCLUDE common English proper nouns or acronyms (e.g., 'ATP', 'Main Street', 'salmonella') if they are widely understood and used as-is in Korean, AND if their Korean translation would be awkward. If an English term is used here, its corresponding 'keywords.korean' entry MUST also be that English term. NO HTML-like tags (e.g., <mark>) are allowed."
+                        description: "Literal Korean direct translation (직역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. This field is primarily for internal consistency with 'keywords.korean' and will NOT be displayed in the final document. It should be PURE KOREAN, but may include English proper nouns/acronyms if their Korean translation is awkward AND they are also listed with the English term in 'keywords.korean'. NO HTML-like tags."
                     },
                     theme: {
                         type: "OBJECT",
@@ -726,7 +727,10 @@
                     quiz1: {
                         type: "OBJECT",
                         properties: {
-                            question: { "type": "STRING", "description": "A multiple-choice question in KOREAN about the content of THE MAIN BODY. The question text MUST start with '[내용일치] '. Example: '[내용일치] 다음 지문의 내용과 일치하지 않는 것은 무엇입니까?'" },
+                            question: { 
+                                "type": "STRING", 
+                                "description": "This field should ONLY contain the Korean string '[내용일치]'." 
+                            },
                             options: {
                                 type: "ARRAY",
                                 items: { "type": "STRING" },
@@ -736,15 +740,25 @@
                                 type: "INTEGER", 
                                 description: "0-indexed integer indicating which of the 5 English options is the false statement." 
                             },
-                            explanation: { "type": "STRING", "description": "A brief explanation in KOREAN for quiz 1."}
+                            explanation: { 
+                                "type": "STRING", 
+                                // MODIFIED: Request concise, core explanation for quiz 1
+                                "description": "A CONCISE explanation in KOREAN for quiz 1. Briefly state why the identified 'false_statement_index' option is false based on THE MAIN BODY of the passage. If possible, also very briefly state why the correct answer (implicitly, the other options) is true or not contradicted. Focus on core reasons."
+                            }
                         },
                         required: ["question", "options", "false_statement_index", "explanation"]
                     },
                     quiz2: { 
                         type: "OBJECT",
                         properties: {
-                            question_text: { "type": "STRING", "description": "The full question text for quiz 2 in KOREAN. It MUST start with '[일치] ' and then follow with a phrase like '다음은 지문을 요약한 문장입니다. 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은 무엇입니까?' or similar." },
-                            summary_sentence_template: { "type": "STRING", "description": "A concise summary sentence of THE MAIN BODY in ENGLISH with {A} and {B} as placeholders for single words. Example: 'The author argues that {A} is essential for achieving {B}.'" },
+                            question_text: { 
+                                "type": "STRING", 
+                                "description": "This field should ONLY contain the Korean string '[요약]'." 
+                            },
+                            summary_sentence_template: { 
+                                type: "STRING", 
+                                description: "A concise summary sentence STRICTLY IN ENGLISH ONLY (ABSOLUTELY NO KOREAN CHARACTERS OR KOREAN TEXT ALLOWED WHATSOEVER), encapsulating THE CORE MESSAGE or MAIN IDEA of THE MAIN BODY of the passage. This summary MUST use {A} and {B} as placeholders for two distinct, single, CORE KEYWORDS IN ENGLISH (important concepts from the passage's main body, ideally chosen from the more significant terms among 'keywords.english'). Example: 'The author's central argument is that {A} is crucial for understanding {B} in modern society.'" 
+                            },
                             blank_options: {
                                 type: "ARRAY",
                                 items: {
@@ -761,7 +775,11 @@
                                 type: "INTEGER", 
                                 description: "0-indexed integer indicating the correct English word pair."
                             },
-                            explanation: { "type": "STRING", "description": "A brief explanation in KOREAN for quiz 2."}
+                            explanation: { 
+                                "type": "STRING", 
+                                // MODIFIED: Request concise, core explanation for quiz 2
+                                "description": "A CONCISE explanation in KOREAN for quiz 2. Briefly state why the 'correct_pair_index' words ({A} and {B}) accurately complete the 'summary_sentence_template' by referencing how they reflect THE MAIN BODY of the passage's core message. Focus on core reasons."
+                            }
                         },
                         required: ["question_text", "summary_sentence_template", "blank_options", "correct_pair_index", "explanation"]
                     }
@@ -771,32 +789,35 @@
 
             const prompt = `You are an expert English teacher AI assistant.
 For the following English passage (where the first line or first few lines might be a title/header and the rest is the main body), provide the requested information in JSON format according to the schema.
-CRITICALLY IMPORTANT: The translations (free_translation_korean, direct_translation_korean), theme, keywords, and hashtags should be based ONLY on the MAIN BODY of the passage, EXCLUDING any initial title or header lines. For example, if the passage starts with "UNIT 03 수동태 이해 하기 . 수능 유형 독해 . 모의고사 기출" followed by the actual English content, then "UNIT 03 수동태 이해 하기 . 수능 유형 독해 . 모의고사 기출" MUST BE EXCLUDED from all processing for direct_translation_korean, keywords, theme, etc. Only the subsequent English content (e.g., "Dear Mrs. Coling, ...") should be processed.
+CRITICALLY IMPORTANT: The translations (free_translation_korean, direct_translation_korean), theme, keywords, and hashtags should be based ONLY on the MAIN BODY of the passage, EXCLUDING any initial title or header lines.
 
 IMPORTANT INSTRUCTION FOR 'keywords':
 Select key English vocabulary items (words, idioms, short phrases) from ONLY THE MAIN BODY.
 For each 'english' keyword:
-  - If it's a general word/phrase, the 'korean' field MUST be its PURE KOREAN translation, matching the form used in 'direct_translation_korean'.
-  - **Exception for Proper Nouns/Acronyms:** If the 'english' keyword is a proper noun (e.g., "Main Street", "salmonella") or a common acronym (e.g., "ATP") that is typically used AS IS in Korean contexts OR if its Korean translation would be awkward, then the 'korean' field for that keyword SHOULD BE THE ORIGINAL ENGLISH TERM ITSELF (e.g., for "ATP", 'korean' should be "ATP"). This English term in 'keywords.korean' must exactly match how it appears in 'direct_translation_korean'.
+  - If it's a general word/phrase, the 'korean' field MUST be its PURE KOREAN translation.
+  - **Exception for Proper Nouns/Acronyms:** If the 'english' keyword is a proper noun or a common acronym typically used AS IS in Korean contexts OR if its Korean translation would be awkward, then the 'korean' field SHOULD BE THE ORIGINAL ENGLISH TERM ITSELF.
 
 IMPORTANT INSTRUCTION FOR 'direct_translation_korean':
-This field MUST be a literal Korean direct translation (직역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers.
-  - It should primarily be PURE KOREAN TEXT. Each English sentence of THE MAIN BODY should correspond to one complete Korean sentence, maintaining the original sentence structure as much as possible while being grammatically correct and natural in Korean. Avoid awkward breaks or overly literal translations that sound unnatural.
-  - **Exception for Proper Nouns/Acronyms:** You MAY use common English proper nouns or acronyms (e.g., "ATP", "Main Street", "salmonella") directly within this Korean translation IF they are widely understood as such in Korean and their Korean translation would be awkward or less clear.
-  - If an English proper noun/acronym is used in 'direct_translation_korean', it MUST also be listed as a keyword where 'keywords.english' and 'keywords.korean' are both that English term (e.g., english: "ATP", korean: "ATP").
-  - ABSOLUTELY NO HTML-like tags (e.g., <mark>, <br>, **) or markdown are allowed in this field.
+This field is for internal keyword consistency and WILL NOT BE DISPLAYED. It MUST be a literal Korean direct translation (직역) of ONLY THE MAIN BODY.
+  - It should primarily be PURE KOREAN TEXT.
+  - **Exception for Proper Nouns/Acronyms:** You MAY use common English proper nouns or acronyms directly within this Korean translation IF they are widely understood as such in Korean.
+  - If an English proper noun/acronym is used here, it MUST also be listed as a keyword where 'keywords.english' and 'keywords.korean' are both that English term.
+  - ABSOLUTELY NO HTML-like tags or markdown are allowed in this field.
 
 IMPORTANT INSTRUCTION FOR 'free_translation_korean':
-This field MUST be a natural Korean free translation (의역) of ONLY THE MAIN BODY. Focus on conveying the meaning naturally in Korean, even if it means restructuring sentences or using different vocabulary than a direct word-for-word translation, to make it sound fluent to a native Korean speaker.
+This field MUST be a natural Korean free translation (의역) of ONLY THE MAIN BODY.
 
 IMPORTANT INSTRUCTION FOR 'hashtags':
 From your 'keywords' list (derived from THE MAIN BODY), select the 10 MOST IMPORTANT English terms. Convert them to hashtags (e.g., #example).
 
 QUIZZES (Based on THE MAIN BODY):
-- quiz1.question: MUST start with '[내용일치] '.
-- quiz2.question_text: MUST start with '[일치] ' and be followed by the question, e.g., '[일치] 다음은 지문을 요약한 문장입니다. 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은 무엇입니까?'.
+- quiz1.question: This field MUST ONLY contain the exact Korean string: '[내용일치]'
+- quiz1.explanation: This explanation MUST be in KOREAN and CONCISELY detail *why* the chosen false statement is false according to THE MAIN BODY, and very briefly why other options are not false. Focus on the absolute core reasoning.
+- quiz2.question_text: This field MUST ONLY contain the exact Korean string: '[요약]'
+- quiz2.summary_sentence_template: CRITICAL INSTRUCTION: This field MUST be a concise summary sentence **WRITTEN EXCLUSIVELY AND STRICTLY IN ENGLISH. IT MUST NOT CONTAIN ANY KOREAN CHARACTERS OR KOREAN TEXT WHATSOEVER, UNDER ANY CIRCUMSTANCES.** It should encapsulate THE CORE MESSAGE or MAIN IDEA of THE MAIN BODY. The placeholders {A} and {B} MUST represent two distinct, single, CORE KEYWORDS/CONCEPTS IN ENGLISH that are central to understanding this main idea.
+- quiz2.explanation: This explanation MUST be in KOREAN and CONCISELY detail *why* the chosen pair of words for (A) and (B) correctly completes the English summary sentence by referencing how they reflect THE MAIN BODY's core message. Focus on the absolute core reasoning.
 
-All other Korean text (theme.korean, quiz explanations) must be natural and grammatically correct Korean, based on THE MAIN BODY.
+All other Korean text (theme.korean) must be natural and grammatically correct Korean, based on THE MAIN BODY.
 
 Passage:
 "${fullPassageForAI}"
@@ -811,7 +832,7 @@ Provide JSON output only.`;
                     responseSchema: schema
                 }
             };
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${userApiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${userApiKey}`; 
 
             try {
                 const response = await fetch(apiUrl, {
@@ -900,13 +921,22 @@ Provide JSON output only.`;
                                 parsedJson.hashtags = parsedJson.hashtags.slice(0,10); 
                             }
                         }
-                        if (!parsedJson.quiz1 || !parsedJson.quiz1.question || !parsedJson.quiz1.explanation) {
-                             console.error("AI did not return all required fields for quiz1:", parsedJson.quiz1);
-                            throw new Error("AI response is missing required fields for quiz1.");
+                        if (!parsedJson.quiz1 || typeof parsedJson.quiz1.question !== 'string' || !parsedJson.quiz1.explanation) { 
+                             console.error("AI did not return all required fields for quiz1 or 'question' is not a string:", parsedJson.quiz1);
+                            throw new Error("AI response is missing required fields for quiz1 or 'question' field is invalid.");
                         }
-                         if (!parsedJson.quiz2 || !parsedJson.quiz2.question_text || !parsedJson.quiz2.explanation) {
-                             console.error("AI did not return all required fields for quiz2:", parsedJson.quiz2);
-                            throw new Error("AI response is missing required fields for quiz2.");
+                         if (!parsedJson.quiz2 || typeof parsedJson.quiz2.question_text !== 'string' || !parsedJson.quiz2.explanation || typeof parsedJson.quiz2.summary_sentence_template !== 'string') { 
+                             console.error("AI did not return all required fields for quiz2 or 'question_text'/'summary_sentence_template' is not a string:", parsedJson.quiz2);
+                            throw new Error("AI response is missing required fields for quiz2 or 'question_text'/'summary_sentence_template' field is invalid.");
+                        }
+
+                        // Client-side check for Korean characters in summary_sentence_template
+                        if (parsedJson.quiz2 && typeof parsedJson.quiz2.summary_sentence_template === 'string') {
+                            const summaryText = parsedJson.quiz2.summary_sentence_template;
+                            const koreanRegex = /[ㄱ-ㅎㅏ-ㅣ가-힣]/;
+                            if (koreanRegex.test(summaryText)) {
+                                console.warn(`AI COMPLIANCE WARNING: quiz2.summary_sentence_template was explicitly instructed to be in ENGLISH ONLY, but contains Korean characters. Text received: "${summaryText}"`);
+                            }
                         }
                         
                         return parsedJson;
@@ -940,12 +970,13 @@ Provide JSON output only.`;
        function createHighlightedTextRuns(text, keywordDetails, baseFont, highlightFontForEnglish, highlightFontForKorean, isEnglishPassage) {
             const runs = [];
             let lastIndex = 0;
-            const bodyFontSize = 20; // 10pt font (20 half-points)
+            const bodyFontSize = 20; 
 
             if (!text || text.trim() === "") { 
                 return [new TextRun({ text: "", font: baseFont, size: bodyFontSize, color: "000000" })]; 
             }
-            const validKeywordDetails = (keywordDetails || []).filter(kd => 
+            // Ensure keywordDetails is an array and filter out invalid entries
+            const validKeywordDetails = (Array.isArray(keywordDetails) ? keywordDetails : []).filter(kd => 
                 kd && 
                 kd.english && typeof kd.english === 'string' && kd.english.trim() !== "" &&
                 kd.korean && typeof kd.korean === 'string' && kd.korean.trim() !== ""
@@ -956,6 +987,7 @@ Provide JSON output only.`;
             }
 
             const englishKeywordColorMap = new Map();
+            // Use up to 20 keywords for highlighting, cycling through rainbowColors
             validKeywordDetails.slice(0, 20).forEach((kd, i) => { 
                 englishKeywordColorMap.set(kd.english.toLowerCase(), rainbowColors[i % rainbowColors.length]);
             });
@@ -968,65 +1000,74 @@ Provide JSON output only.`;
                         searchTerms.push({
                             text: kd.english, 
                             color: color, 
-                            font: highlightFontForEnglish 
+                            font: highlightFontForEnglish // This should be the English font
                         });
                     }
                 });
-            } else { 
+            } else { // For Korean text (직역), use kd.korean for searching
                 validKeywordDetails.forEach(kd => {
-                    const color = englishKeywordColorMap.get(kd.english.toLowerCase()); 
+                    const color = englishKeywordColorMap.get(kd.english.toLowerCase()); // Color is still based on English keyword
                     if (color) { 
                         searchTerms.push({
-                            text: kd.korean, 
+                            text: kd.korean, // Search for the Korean equivalent
                             color: color, 
-                            font: highlightFontForKorean 
+                            font: highlightFontForKorean // This should be the Korean font
                         });
                     }
                 });
             }
             
+            // Sort by length to match longer phrases first
             searchTerms = searchTerms.sort((a, b) => b.text.length - a.text.length);
 
             if (searchTerms.length === 0) {
                 return [new TextRun({ text: text, font: baseFont, size: bodyFontSize, color: "000000" })]; 
             }
             
-            const regexFlags = isEnglishPassage ? 'gi' : 'g';
+            // Create a regex that includes all search terms.
+            // Escape special characters in search terms for regex.
+            const regexFlags = isEnglishPassage ? 'gi' : 'g'; // Case-insensitive for English, case-sensitive for Korean (can be adjusted)
             const keywordRegex = new RegExp(`(${searchTerms.map(st => st.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, regexFlags);
             
             let match;
             const allMatches = [];
+            // Find all occurrences and store them with their original casing and term object
             while ((match = keywordRegex.exec(text)) !== null) {
+                // Find the corresponding searchTerm object, sensitive to the passage language
                 const matchedObject = searchTerms.find(st => isEnglishPassage ? st.text.toLowerCase() === match[0].toLowerCase() : st.text === match[0]);
                 if (matchedObject) {
                     allMatches.push({ index: match.index, matchedText: match[0], termObject: matchedObject });
                 }
             }
+            // Sort matches by index to process them in order
             allMatches.sort((a, b) => a.index - b.index); 
 
             for (const currentMatch of allMatches) {
-                if (currentMatch.index < lastIndex) continue; 
+                if (currentMatch.index < lastIndex) continue; // Skip overlapping matches already handled
 
                 const matchedTermObject = currentMatch.termObject;
 
+                // Add text before the current match
                 if (currentMatch.index > lastIndex) {
                     runs.push(new TextRun({ text: text.substring(lastIndex, currentMatch.index), font: baseFont, size: bodyFontSize, color: "000000" })); 
                 }
                 
+                // Add the highlighted keyword
                 if (matchedTermObject) { 
                     runs.push(new TextRun({
-                        text: currentMatch.matchedText, 
+                        text: currentMatch.matchedText, // Use the original matched text to preserve casing
                         font: matchedTermObject.font, 
                         color: matchedTermObject.color, 
                         size: bodyFontSize, 
                         bold: true
                     }));
-                } else { 
+                } else { // Fallback, should not happen if matchedObject is always found
                      runs.push(new TextRun({ text: currentMatch.matchedText, font: baseFont, size: bodyFontSize, color: "000000" })); 
                 }
                 lastIndex = currentMatch.index + currentMatch.matchedText.length;
             }
 
+            // Add any remaining text after the last match
             if (lastIndex < text.length) {
                 runs.push(new TextRun({ text: text.substring(lastIndex), font: baseFont, size: bodyFontSize, color: "000000" })); 
             }
@@ -1046,15 +1087,14 @@ Provide JSON output only.`;
          */
         function createPageContentForDocx(passageBody, aiData, docTitle, fontEnglish, fontKorean, lineSpacing) {
             const finalKeywordDetails = aiData.keywords ? aiData.keywords.slice(0, 20) : []; 
-            const titleFontSize = 22; // 11pt font (22 half-points)
-            const bodyFontSize = 20;  // 10pt font (20 half-points)
+            const titleFontSize = 22; 
+            const bodyFontSize = 20;  
             
-            // Quiz specific font sizes and line spacing
-            const quiz1OptionFontSize = 18; // 9pt font (18 half-points) for Quiz 1 options
-            const quiz2SummarSentenceFontSize = 18; // 9pt font (18 half-points) for Quiz 2 summary sentence
-            const quiz2OptionFontSize = 18; // 9pt font (18 half-points) for Quiz 2 English options
-            const quizAnswerKoreanFontSize = 18; // 9pt font (18 half-points) for Korean "(정답)"
-            const quizLineSpacing = Math.round(240 * 0.9); // 0.9 line spacing for quizzes = 216
+            const quiz1OptionFontSize = 18; 
+            const quiz2SummarSentenceFontSize = 18; 
+            const quiz2OptionFontSize = 18; 
+            const quizAnswerKoreanFontSize = 18; 
+            const quizLineSpacing = Math.round(240 * 0.9); 
 
             const quizNumbering = ['①', '②', '③', '④', '⑤'];
 
@@ -1066,7 +1106,6 @@ Provide JSON output only.`;
 
             const emptyParagraph = new Paragraph({ text: "", spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO }});
             
-            // --- Top Table: English Passage and Direct Translation ---
             const englishPassageParas = [
                 new Paragraph({ 
                     children: [new TextRun({ text: docTitle, font: fontEnglish, size: titleFontSize, bold: true, characterSpacing: -14 })], 
@@ -1074,26 +1113,34 @@ Provide JSON output only.`;
                     spacing: { after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
                 }),
                 new Paragraph({ 
+                    // Corrected: Ensure isEnglishPassage is true for the English passage.
                     children: createHighlightedTextRuns(passageBody, finalKeywordDetails, fontEnglish, fontEnglish, fontKorean, true),
                     style: "englishStyle",
                     spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO } 
                 }),
             ];
 
-            const directTranslationParas = [
+            const notesSectionTitle = "▶ 필기"; 
+            const noteTakingSpaceParagraphs = [];
+            for (let k = 0; k < 10; k++) { 
+                noteTakingSpaceParagraphs.push(
+                    new Paragraph({
+                        text: "", 
+                        style: "koreanStyle", 
+                        spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO }
+                    })
+                );
+            }
+
+            const notesSectionParas = [ 
                 new Paragraph({ 
-                    children: [new TextRun({ text: "▶ 직역", font: fontKorean, size: titleFontSize, bold: true })],  
-                    style: "koreanSectionTitleStyle",
-                    spacing: { after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO }
+                    children: [new TextRun({ text: notesSectionTitle, font: fontKorean, size: titleFontSize, bold: true })],  
+                    style: "koreanSectionTitleStyle", 
                 }),
-                new Paragraph({  
-                    children: createHighlightedTextRuns(aiData.direct_translation_korean, finalKeywordDetails, fontKorean, fontEnglish, fontKorean, false),
-                    style: "koreanStyle",
-                    spacing: { line: lineSpacing, lineRule: LineRuleType.AUTO } 
-                }),
+                ...noteTakingSpaceParagraphs 
             ];
             
-            const englishAndDirectTranslationTable = new Table({
+            const englishAndNotesTable = new Table({ 
                 rows: [
                     new TableRow({
                         children: [
@@ -1110,7 +1157,7 @@ Provide JSON output only.`;
                                 margins: { right: cmToTwip(0.1) } 
                             }),
                             new TableCell({
-                                children: directTranslationParas,
+                                children: notesSectionParas, 
                                 width: { size: halfAvailableWidth, type: WidthType.DXA },
                                 verticalAlign: VerticalAlign.TOP,
                                 borders: { 
@@ -1127,7 +1174,6 @@ Provide JSON output only.`;
                 width: { size: availableTableWidth, type: WidthType.DXA },
             });
 
-            // --- Bottom Table: Remaining Content ---
             const remainingLeftChildren = [
                 emptyParagraph, 
                 new Paragraph({ 
@@ -1170,16 +1216,14 @@ Provide JSON output only.`;
             ];
 
             const remainingRightChildren = [
-                // MODIFICATION START: Add one empty paragraph before "▽ 확인 문제"
                 emptyParagraph,
-                // MODIFICATION END
                 new Paragraph({ 
                     children: [new TextRun({ text: "▽ 확인 문제", font: fontKorean, size: titleFontSize, bold: true })], 
                     style: "koreanSectionTitleStyle", 
                     spacing: { before: 120, after: 100, line: lineSpacing, lineRule: LineRuleType.AUTO } 
                 }),
                 new Paragraph({ 
-                    children: [new TextRun({ text: `1. [내용일치]`, font: fontKorean, size: bodyFontSize, bold:true })], 
+                    children: [new TextRun({ text: `1. ${aiData.quiz1.question || '[내용일치]'}`, font: fontKorean, size: bodyFontSize, bold:true })], 
                     spacing: { after: 80, line: quizLineSpacing, lineRule: LineRuleType.AUTO }, 
                     style: "koreanStyle"
                 }),
@@ -1200,7 +1244,7 @@ Provide JSON output only.`;
                     spacing: { before: 40, after: 150, line: quizLineSpacing, lineRule: LineRuleType.AUTO } 
                 }),
                 new Paragraph({ 
-                    children: [new TextRun({ text: `2. [요약]`, font: fontKorean, size: bodyFontSize, bold:true })], 
+                     children: [new TextRun({ text: `2. ${aiData.quiz2.question_text || '[요약]'}`, font: fontKorean, size: bodyFontSize, bold:true })], 
                     spacing: { after: 80, line: quizLineSpacing, lineRule: LineRuleType.AUTO }, 
                     style: "koreanStyle"
                 }),
@@ -1208,11 +1252,11 @@ Provide JSON output only.`;
                     children: [
                         new TextRun({
                             text: `   "${aiData.quiz2.summary_sentence_template || "The summary emphasizing {A} and {B} is missing."}"`,
-                            font: fontEnglish,
+                            font: fontEnglish, 
                             size: quiz2SummarSentenceFontSize 
                         })
                     ],
-                    style: "englishStyle",
+                    style: "englishStyle", 
                     spacing: { after: 80, line: quizLineSpacing, lineRule: LineRuleType.AUTO } 
                 }),
                 ...(aiData.quiz2.blank_options || []).map((pair, index) => new Paragraph({ 
@@ -1278,7 +1322,7 @@ Provide JSON output only.`;
                 margins: { bottom: cmToTwip(0.5) }
             });
             
-            return [englishAndDirectTranslationTable, lowerContentTable];
+            return [englishAndNotesTable, lowerContentTable]; 
         }
     </script>
 </body>
