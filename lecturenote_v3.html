@@ -210,9 +210,12 @@
     </div>
 
     <script type="module">
+        // Import necessary modules from docx library
+        // docx 라이브러리에서 필요한 모듈 가져오기
         const { Packer, Document, Paragraph, TextRun, HeadingLevel, PageOrientation, PageBreak, convertInchesToTwip, Table, TableCell, TableRow, WidthType, BorderStyle, VerticalAlign, HeightRule, LineRuleType } = docx;
 
         // DOM Element References
+        // DOM 요소 참조
         const fileInput = document.getElementById('fileInput');
         const uploadTriggerButton = document.getElementById('uploadTriggerButton'); 
         const uploadButton = document.getElementById('uploadButton'); 
@@ -229,21 +232,24 @@
         const loader = document.getElementById('loader');
         const statusMessage = document.getElementById('statusMessage');
 
-        let passageObjects = []; // Stores parsed passage data
-        const rainbowColors = ["C75252", "315F97", "E9AE2B", "699B37", "358791", "D356A7", "8A4E9E", "4A4A4A", "D07C3E", "00796B"]; // Expanded rainbow colors for more keywords
+        let passageObjects = []; // Stores parsed passage data: { title: string, body: string, originalFullText: string, selected: boolean } // 분석된 지문 데이터 저장: { 제목: 문자열, 본문: 문자열, 원본 전체 텍스트: 문자열, 선택됨: 불리언 }
+        const rainbowColors = ["C75252", "315F97", "E9AE2B", "699B37", "358791", "D356A7", "8A4E9E", "4A4A4A", "D07C3E", "00796B"]; // Expanded rainbow colors for more keywords // 더 많은 키워드를 위한 확장된 무지개색
 
         
-        // Utility to convert cm to twips (used for DOCX measurements)
+        // Utility to convert centimeters to twips (1/20th of a point), used for DOCX measurements.
+        // 센티미터를 트윕(1/20 포인트)으로 변환하는 유틸리티, DOCX 측정에 사용됨
         const cmToTwip = (cm) => Math.round(cm * 566.929);
 
-        // Event listener for the custom upload button to trigger the hidden file input
+        // Event listener for the custom '파일 업로드' (File Upload) button to trigger the hidden file input.
+        // 숨겨진 파일 입력을 트리거하기 위한 사용자 정의 '파일 업로드' 버튼의 이벤트 리스너
         if (uploadTriggerButton) {
             uploadTriggerButton.addEventListener('click', () => {
-                fileInput.click();
+                fileInput.click(); // Programmatically click the hidden file input. // 숨겨진 파일 입력을 프로그래밍 방식으로 클릭
             });
         }
         
-        // Event listener for file input changes
+        // Event listener for file input changes. Updates the status message with the selected file name.
+        // 파일 입력 변경에 대한 이벤트 리스너. 선택한 파일 이름으로 상태 메시지를 업데이트
         if (fileInput) {
             fileInput.addEventListener('change', () => {
                 if (fileInput.files && fileInput.files.length > 0) {
@@ -252,7 +258,10 @@
             });
         }
 
-        // Event listener for the "지문 분석 시작" (Start Passage Analysis) button
+        // Event listener for the "지문 분석 시작" (Start Passage Analysis) button.
+        // Handles file reading, passage parsing, and UI updates.
+        // "지문 분석 시작" 버튼의 이벤트 리스너
+        // 파일 읽기, 지문 분석 및 UI 업데이트 처리
         if (uploadButton) {
             uploadButton.addEventListener('click', async () => {
                 const file = fileInput.files[0];
@@ -266,40 +275,42 @@
                     return;
                 }
 
-                updateStatus("파일을 읽고 지문을 분리하는 중...", "loading");
+                updateStatus("파일을 읽고 지문을 분리하는 중...", "loading"); // Show loading indicator // 로딩 표시기 표시
                 try {
                     let rawText = "";
+                    // Read text from .txt or .docx file
+                    // .txt 또는 .docx 파일에서 텍스트 읽기
                     if (file.name.endsWith('.txt')) {
                         rawText = await file.text();
                     } else if (file.name.endsWith('.docx')) {
                         const arrayBuffer = await file.arrayBuffer();
-                        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer }); // Use mammoth.js for docx // docx에 mammoth.js 사용
                         rawText = result.value;
                     } else {
                         updateStatus("지원하지 않는 파일 형식입니다. .txt 또는 .docx 파일을 사용해주세요.", "error");
                         return;
                     }
                     
-                    passageObjects = parsePassages(rawText); // Parse the raw text into passage objects
+                    passageObjects = parsePassages(rawText); // Parse the raw text into passage objects // 원시 텍스트를 지문 객체로 분석
 
                     if (passageObjects.length === 0) {
-                        updateStatus("파일에서 지문을 추출하지 못했거나 인식할 수 있는 지문 형식이 아닙니다.", "error");
+                        updateStatus("파일에서 지문을 추출하지 못했거나 인식할 수 있는 지문 형식이 아닙니다. 또는 모든 지문이 대제목으로만 구성되어 필터링되었습니다.", "error");
                         passageSelectionArea.classList.add('hidden');
                         actionArea.classList.add('hidden');
                         return;
                     }
 
-                    displayPassageList(); // Display the list of parsed passages
-                    passageSelectionArea.classList.remove('hidden');
-                    actionArea.classList.remove('hidden'); 
-                    updateStatus(`${passageObjects.length}개의 지문이 로드되었습니다. 생성할 지문을 선택해주세요.`, "success");
+                    displayPassageList(); // Display the list of parsed passages for selection // 선택을 위해 분석된 지문 목록 표시
+                    passageSelectionArea.classList.remove('hidden'); // Show passage selection area // 지문 선택 영역 표시
+                    actionArea.classList.remove('hidden'); // Show generate button area // 생성 버튼 영역 표시
+                    updateStatus(`${passageObjects.length}개의 지문이 로드되었습니다. 생성할 지문을 선택해주세요. (대제목만 있는 지문은 제외됨)`, "success");
 
                 } catch (error) {
                     console.error("File processing error:", error);
                     updateStatus(`파일 처리 중 오류 발생: ${error.message}`, "error");
                     passageSelectionArea.classList.add('hidden');
                     actionArea.classList.add('hidden');
-                    passageObjects = [];
+                    passageObjects = []; // Clear any partially processed passages // 부분적으로 처리된 지문 지우기
                 }
             });
         }
@@ -307,162 +318,220 @@
         /**
          * Parses raw text into an array of passage objects.
          * Each passage object contains a title, body, original full text, and selection status.
-         * This function attempts to identify titles and corresponding body text based on patterns.
+         * This function attempts to identify titles and corresponding body text based on various patterns.
          * @param {string} rawText - The raw text content from the uploaded file.
          * @returns {Array<Object>} An array of passage objects.
+         * * 원시 텍스트를 지문 객체 배열로 분석합니다.
+         * 각 지문 객체에는 제목, 본문, 원본 전체 텍스트 및 선택 상태가 포함됩니다.
+         * 이 함수는 다양한 패턴을 기반으로 제목과 해당 본문 텍스트를 식별하려고 시도합니다.
+         * @param {string} rawText - 업로드된 파일의 원시 텍스트 내용입니다.
+         * @returns {Array<Object>} 지문 객체 배열입니다.
          */
         function parsePassages(rawText) {
             const passages = [];
             const lines = rawText.split(/\r?\n/);
 
-            let activeTopLevelPrefix = null;    
-            let activeMidLevelPrefix = null;    
+            let contextualTopLevelTitleLine = null;
+            let contextualMidLevelTitleLine = null;
 
-            let currentDisplayTitleForUI = null;
-            let currentRawTitleLinesForAI = [];
-            let currentBodyLines = [];
+            let currentDisplayTitle = null; 
+            let currentRawTitleLines = [];  
+            let currentBodyLines = [];     
 
-            // Helper function to finalize and store the currently processed passage
-            function finalizeAndStoreCurrentPassage() {
-                if (currentDisplayTitleForUI) {
+            function storeCurrentPassage() {
+                if (currentDisplayTitle || currentBodyLines.length > 0) {
                     const body = currentBodyLines.join('\n').trim();
-                    if (body) { 
-                        const rawTitleForAI = currentRawTitleLinesForAI.join('\n').trim();
-                        const originalFullText = (rawTitleForAI ? rawTitleForAI + '\n' : '') + body; 
-                        passages.push({
-                            title: currentDisplayTitleForUI,
+                    const rawTitle = currentRawTitleLines.join('\n').trim();
+                    
+                    if (body || (currentDisplayTitle && currentDisplayTitle !== "영어 지문 (제목 자동 감지)")) {
+                         const originalFullText = (rawTitle ? rawTitle + '\n' : '') + body;
+                         passages.push({
+                            title: currentDisplayTitle || "영어 지문 (제목 자동 감지)",
                             body: body,
-                            originalFullText: originalFullText,
-                            selected: true // Default to selected
+                            originalFullText: originalFullText.trim(),
+                            selected: true
                         });
                     }
                 }
-                currentDisplayTitleForUI = null;
-                currentRawTitleLinesForAI = [];
+                currentDisplayTitle = null;
+                currentRawTitleLines = [];
                 currentBodyLines = [];
             }
             
-            // Helper function to format titles from parts
+            // Helper function to format display titles from parts, using SPACE as separator
+            // 부분에서 표시 제목을 형식화하는 도우미 함수, 공백을 구분자로 사용
             function formatTitle(...parts) {
-                return parts.filter(p => p && String(p).trim()).join(". ");
+                return parts.filter(p => p && String(p).trim()).join(" "); // Changed ". " to " "
             }
 
-            // Iterate through each line to identify passage boundaries and titles
+            const newTopTitlePattern = /^\s*\[\s*([A-Za-z0-9]+)\s*\]\s*$/; 
+            const newMidTitlePattern = /^\s*([A-Za-z0-9]+|Add)\s*\)\s*$/;    
+
+            const unitPattern = /^(UNIT\s+\d+.*)$/i;
+            const numericTopPattern = /^(0\d+.*)$/i; 
+            const grammarPattern = /^\s*GRAMMAR\s+for\s+Reading\s*$/i;
+            const sooneungPattern = /^\s*수능\s+유형\s+독해(?:\s+모의고사\s+기출)?\s*$/i;
+            const miniTestPattern = /^(MINI\s+TEST\s+\d+회)$/i; 
+            const haeseokPattern = /^(해석\s*기법\s*\d+)(?:\s+(\d+))?$/i; 
+            const numberOrRangePattern = /^\s*(\d+(?:~\d+)?)\s*\.?\s*$/; 
+            const mogyGichulPattern = /^\s*모의고사\s+기출\s*$/i;
+
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const trimmedLine = line.trim();
 
-                if (trimmedLine === "") { // Keep empty lines if they are part of a passage body
-                    if (currentDisplayTitleForUI) currentBodyLines.push(line);
+                if (trimmedLine === "" && currentDisplayTitle === null) { 
+                    continue;
+                }
+                if (trimmedLine === "" && currentDisplayTitle !== null) { 
+                    currentBodyLines.push(line);
                     continue;
                 }
 
-                // Define various regex patterns to identify potential title lines
-                const unitPattern = /^(UNIT\s+\d+.*)$/i;
-                const numericTopPattern = /^(0\d+.*)$/i; 
-                const grammarPattern = /^\s*GRAMMAR\s+for\s+Reading\s*$/i;
-                const sooneungPattern = /^\s*수능\s+유형\s+독해(?:\s+모의고사\s+기출)?\s*$/i;
-                const miniTestPattern = /^(MINI\s+TEST\s+\d+회)$/i; 
-                const haeseokPattern = /^(해석\s*기법\s*\d+)(?:\s+(\d+))?$/i; 
-                const numberOrRangePattern = /^\s*(\d+(?:~\d+)?)\s*\.?\s*$/; 
-                const mogyGichulPattern = /^\s*모의고사\s+기출\s*$/i;
+                let matchedTitleThisLine = false;
 
-                let isNewPassageLine = false;
-                let potentialDisplayTitle = null;
-                let potentialRawTitles = [trimmedLine]; // Store raw lines that constitute the title for AI
+                if (newTopTitlePattern.test(trimmedLine)) {
+                    storeCurrentPassage(); 
+                    contextualTopLevelTitleLine = trimmedLine;
+                    contextualMidLevelTitleLine = null; 
+                    currentDisplayTitle = trimmedLine; // This is the raw "[ X ]"
+                    currentRawTitleLines = [trimmedLine];
+                    currentBodyLines = []; // Reset for the new passage
+                    matchedTitleThisLine = true;
+                } 
+                else if (newMidTitlePattern.test(trimmedLine)) {
+                    storeCurrentPassage(); // Store previous passage first
+                    contextualMidLevelTitleLine = trimmedLine; 
 
-                // Logic to determine if the current line starts a new passage
-                if (unitPattern.test(trimmedLine)) {
-                    finalizeAndStoreCurrentPassage();
-                    activeTopLevelPrefix = trimmedLine;
-                    activeMidLevelPrefix = null; 
-                    potentialDisplayTitle = activeTopLevelPrefix;
-                    isNewPassageLine = true;
+                    const midMatch = trimmedLine.match(newMidTitlePattern);
+                    const midPartClean = midMatch[1]; // This is "1" or "X" or "Add"
+
+                    currentDisplayTitle = formatTitle(contextualTopLevelTitleLine, midPartClean);
+                    currentRawTitleLines = contextualTopLevelTitleLine ? [contextualTopLevelTitleLine, trimmedLine] : [trimmedLine];
+                    currentBodyLines = []; // Reset for the new passage starting with this mid-title
+                    matchedTitleThisLine = true;
+                }
+                else if (unitPattern.test(trimmedLine)) {
+                    storeCurrentPassage();
+                    contextualTopLevelTitleLine = trimmedLine;
+                    contextualMidLevelTitleLine = null;
+                    currentDisplayTitle = trimmedLine;
+                    currentRawTitleLines = [trimmedLine];
+                    currentBodyLines = [];
+                    matchedTitleThisLine = true;
                 } else if (numericTopPattern.test(trimmedLine)) {
-                    finalizeAndStoreCurrentPassage();
-                    activeTopLevelPrefix = trimmedLine; 
-                    activeMidLevelPrefix = null; 
-                    potentialDisplayTitle = activeTopLevelPrefix;
-                    isNewPassageLine = true;
+                    storeCurrentPassage();
+                    contextualTopLevelTitleLine = trimmedLine;
+                    contextualMidLevelTitleLine = null;
+                    currentDisplayTitle = trimmedLine;
+                    currentRawTitleLines = [trimmedLine];
+                    currentBodyLines = [];
+                    matchedTitleThisLine = true;
                 } else if (miniTestPattern.test(trimmedLine)) {
-                    finalizeAndStoreCurrentPassage();
-                    activeTopLevelPrefix = null; 
-                    activeMidLevelPrefix = trimmedLine; 
-                    potentialDisplayTitle = activeMidLevelPrefix;
-                    isNewPassageLine = true;
+                    storeCurrentPassage();
+                    contextualTopLevelTitleLine = trimmedLine; 
+                    contextualMidLevelTitleLine = null;
+                    currentDisplayTitle = trimmedLine;
+                    currentRawTitleLines = [trimmedLine];
+                    currentBodyLines = [];
+                    matchedTitleThisLine = true;
                 } else if (grammarPattern.test(trimmedLine) || sooneungPattern.test(trimmedLine)) {
-                    if (activeTopLevelPrefix && unitPattern.test(activeTopLevelPrefix)) {
-                        finalizeAndStoreCurrentPassage();
-                        activeMidLevelPrefix = trimmedLine;
-                        potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix);
-                        isNewPassageLine = true;
-                    } else { 
-                        if (currentDisplayTitleForUI) currentBodyLines.push(line);
-                        else { finalizeAndStoreCurrentPassage(); potentialDisplayTitle = trimmedLine; activeTopLevelPrefix = null; activeMidLevelPrefix = null; isNewPassageLine = true; }
+                    storeCurrentPassage();
+                    contextualMidLevelTitleLine = trimmedLine;
+                    currentDisplayTitle = formatTitle(contextualTopLevelTitleLine, trimmedLine);
+                    currentRawTitleLines = contextualTopLevelTitleLine ? [contextualTopLevelTitleLine, trimmedLine] : [trimmedLine];
+                    currentBodyLines = [];
+                    if (!contextualTopLevelTitleLine) { 
+                        contextualTopLevelTitleLine = trimmedLine;
+                        contextualMidLevelTitleLine = null; 
                     }
+                    matchedTitleThisLine = true;
                 } else if (haeseokPattern.test(trimmedLine)) {
+                    storeCurrentPassage();
                     const match = trimmedLine.match(haeseokPattern);
                     const haeseokBase = match[1].trim(); 
-                    const haeseokNumFromLine = match[2] ? match[2].trim() : null;
-
-                    if (activeTopLevelPrefix && numericTopPattern.test(activeTopLevelPrefix)) { 
-                        finalizeAndStoreCurrentPassage();
-                        activeMidLevelPrefix = haeseokBase; 
-
-                        if (haeseokNumFromLine) { 
-                            const bottomPart = `${haeseokNumFromLine}번`;
-                            potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix, bottomPart);
-                            isNewPassageLine = true;
-                        } else { 
-                            if (i + 1 < lines.length && lines[i+1].trim().match(numberOrRangePattern)) { 
-                                const nextLineTrimmed = lines[i+1].trim();
-                                const nextLineNumberMatch = nextLineTrimmed.match(numberOrRangePattern);
-                                const bottomPart = `${nextLineNumberMatch[1].trim()}번`; 
-                                potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix, bottomPart);
-                                potentialRawTitles = [trimmedLine, nextLineTrimmed]; 
-                                i++; 
-                                isNewPassageLine = true;
-                            } else { 
-                                potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix);
-                                isNewPassageLine = true;
-                            }
-                        }
-                    } else { 
-                         if (currentDisplayTitleForUI) currentBodyLines.push(line); else {finalizeAndStoreCurrentPassage(); potentialDisplayTitle = trimmedLine; activeTopLevelPrefix = null; activeMidLevelPrefix = null; isNewPassageLine = true;}
-                    }
-                } else if (trimmedLine.match(numberOrRangePattern) || mogyGichulPattern.test(trimmedLine)) { 
-                    let bottomPart = trimmedLine;
-                    if (trimmedLine.match(numberOrRangePattern)) {
-                        bottomPart = `${trimmedLine.match(numberOrRangePattern)[1].trim()}번`; 
-                    }
+                    const haeseokNumFromLine = match[2] ? match[2].trim() : null; 
                     
-                    finalizeAndStoreCurrentPassage();
-                    potentialDisplayTitle = formatTitle(activeTopLevelPrefix, activeMidLevelPrefix, bottomPart);
-                    isNewPassageLine = true;
-                }
-                 else { // If no specific title pattern matches, but we have a current context, assume it's body
-                    if (currentDisplayTitleForUI) {
-                        currentBodyLines.push(line);
-                    } else { // If no context, this line starts a new passage (e.g., a single line passage or first passage)
-                        finalizeAndStoreCurrentPassage();
-                        potentialDisplayTitle = trimmedLine; // Treat this line as the title
-                        activeTopLevelPrefix = null; 
-                        activeMidLevelPrefix = null;
-                        isNewPassageLine = true;
+                    contextualMidLevelTitleLine = haeseokBase; 
+
+                    let tempRawTitlesCollector = [];
+                    if (contextualTopLevelTitleLine) tempRawTitlesCollector.push(contextualTopLevelTitleLine);
+                    tempRawTitlesCollector.push(trimmedLine); 
+
+                    let displayTitlePartsCollector = [contextualTopLevelTitleLine, haeseokBase];
+
+                    if (haeseokNumFromLine) {
+                        displayTitlePartsCollector.push(`${haeseokNumFromLine}번`);
+                    } else if (i + 1 < lines.length && lines[i+1].trim().match(numberOrRangePattern)) {
+                        const nextLineTrimmed = lines[i+1].trim();
+                        const nextLineNumberMatch = nextLineTrimmed.match(numberOrRangePattern);
+                        displayTitlePartsCollector.push(`${nextLineNumberMatch[1].trim()}번`);
+                        tempRawTitlesCollector.push(nextLineTrimmed); 
+                        i++; 
                     }
+                    currentDisplayTitle = formatTitle(...displayTitlePartsCollector);
+                    currentRawTitleLines = tempRawTitlesCollector;
+                    currentBodyLines = [];
+                    matchedTitleThisLine = true;
+                } else if (numberOrRangePattern.test(trimmedLine) || mogyGichulPattern.test(trimmedLine)) {
+                    storeCurrentPassage();
+                    
+                    let bottomPartTextForDisplay = trimmedLine;
+                    if (numberOrRangePattern.test(trimmedLine)) {
+                         bottomPartTextForDisplay = `${trimmedLine.match(numberOrRangePattern)[1].trim()}번`;
+                    }
+
+                    currentDisplayTitle = formatTitle(contextualTopLevelTitleLine, contextualMidLevelTitleLine, bottomPartTextForDisplay);
+                    
+                    currentRawTitleLines = []; 
+                    if (contextualTopLevelTitleLine) currentRawTitleLines.push(contextualTopLevelTitleLine);
+                    if (contextualMidLevelTitleLine) currentRawTitleLines.push(contextualMidLevelTitleLine);
+                    currentRawTitleLines.push(trimmedLine); 
+                    currentBodyLines = [];
+                    matchedTitleThisLine = true;
                 }
 
-                if (isNewPassageLine) {
-                    currentDisplayTitleForUI = potentialDisplayTitle;
-                    currentRawTitleLinesForAI = potentialRawTitles;
+
+                if (matchedTitleThisLine) {
+                    // currentBodyLines was reset
+                } else { 
+                    if (currentDisplayTitle === null) { 
+                        if (passages.length === 0 && currentBodyLines.length === 0) {
+                            currentDisplayTitle = "영어 지문 (제목 자동 감지)";
+                            currentRawTitleLines = []; 
+                        }
+                    }
+                    if (currentDisplayTitle !== null) {
+                         currentBodyLines.push(line);
+                    }
                 }
             }
-            finalizeAndStoreCurrentPassage(); // Store the last passage
 
-            // Filter out any passages that might have been created without a body
-            const finalPassages = passages.filter(p => p.body && p.body.trim() !== "");
+            storeCurrentPassage(); 
 
-            // If no passages were parsed but there's text, treat the whole content as one passage
+            const preliminaryPassages = passages.filter(p => {
+                const hasMeaningfulTitle = p.title !== "영어 지문 (제목 자동 감지)";
+                const hasBody = p.body.trim() !== "";
+                return hasMeaningfulTitle || hasBody;
+            });
+
+            // Requirement 1: Filter out passages that are only main titles like [ 1 ], [ X ] and have no body
+            // 요구 사항 1: [ 1 ], [ X ]와 같이 대제목만 있고 본문이 없는 지문 필터링
+            const finalPassages = preliminaryPassages.filter(p => {
+                // Check if the title strictly matches the newTopTitlePattern (e.g., "[ 1 ]") AND has no body.
+                // 제목이 newTopTitlePattern(예: "[ 1 ]")과 정확히 일치하고 본문이 없는지 확인합니다.
+                const isOnlyTopLevelFormat = newTopTitlePattern.test(p.title.trim());
+                
+                if (isOnlyTopLevelFormat && p.body.trim() === "") {
+                    // This means the title is like "[ 1 ]" and it has no body. Exclude it.
+                    // 이것은 제목이 "[ 1 ]"과 같고 본문이 없음을 의미합니다. 제외합니다.
+                    return false; 
+                }
+                return true;
+            });
+
+
             if (finalPassages.length === 0 && rawText.trim() !== "") {
                 return [{
                     title: "영어 지문 (제목 자동 감지)",
@@ -476,11 +545,12 @@
 
         /**
          * Displays the list of parsed passages in the UI with checkboxes for selection.
+         * UI에 분석된 지문 목록을 선택용 확인란과 함께 표시합니다.
          */
         function displayPassageList() {
             passageDisplay.innerHTML = ""; 
             if (passageObjects.length === 0) {
-                passageDisplay.innerHTML = '<p class="text-slate-500">표시할 지문이 없습니다.</p>';
+                passageDisplay.innerHTML = '<p class="text-slate-500">표시할 지문이 없습니다. (대제목만 있는 지문은 제외되었을 수 있습니다)</p>';
                 passageCountElement.textContent = "";
                 if(selectAllCheckbox) selectAllCheckbox.checked = false;
                 return;
@@ -503,7 +573,6 @@
                 const label = document.createElement('label');
                 label.htmlFor = `passage-${index}`;
                 label.className = 'ml-3 block text-sm font-medium text-gray-700 flex-grow'; 
-                // Display title and a snippet of the body
                 label.innerHTML = `<span class="font-semibold text-gray-900">${p.title}</span><br><span class="text-xs text-gray-500">${p.body.substring(0, 100)}...</span>`; 
                 
                 div.appendChild(checkbox);
@@ -515,6 +584,7 @@
         }
         
         // Event listener for the "Select All" checkbox
+        // "전체 선택" 확인란의 이벤트 리스너
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('change', (event) => {
                 const isChecked = event.target.checked;
@@ -527,18 +597,20 @@
 
         /**
          * Updates the state of the "Select All" checkbox based on individual passage selections.
+         * 개별 지문 선택에 따라 "전체 선택" 확인란의 상태를 업데이트합니다.
          */
         function updateSelectAllCheckboxState() {
             if (!selectAllCheckbox) return;
             const allSelected = passageObjects.length > 0 && passageObjects.every(p => p.selected);
             const someSelected = passageObjects.some(p => p.selected);
             selectAllCheckbox.checked = allSelected;
-            selectAllCheckbox.indeterminate = !allSelected && someSelected; // Show indeterminate if some but not all are selected
+            selectAllCheckbox.indeterminate = !allSelected && someSelected; 
             updatePassageCount();
         }
         
         /**
          * Updates the displayed count of selected passages.
+         * 선택된 지문의 표시된 개수를 업데이트합니다.
          */
         function updatePassageCount() {
             if (passageCountElement) {
@@ -547,6 +619,7 @@
         }
 
         // Event listener for the "수업노트 생성 (DOCX)" (Generate Class Note) button
+        // "수업노트 생성 (DOCX)" 버튼의 이벤트 리스너
         if (generateButton) {
             generateButton.addEventListener('click', async () => {
                 const selectedPassages = passageObjects.filter(p => p.selected);
@@ -570,7 +643,6 @@
                 const fontKorean = "김남윤체";   
                 const lineSpacingValue = 276; 
 
-                // Process each selected passage
                 for (let i = 0; i < selectedPassages.length; i++) {
                     const passageObj = selectedPassages[i];
                     updateStatus(`(${i+1}/${selectedPassages.length}) 지문 처리 중: "${passageObj.title.substring(0,20)}..."`, "loading");
@@ -663,7 +735,7 @@
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
                     const firstSelectedTitle = selectedPassages.length > 0 ? selectedPassages[0].title : "다중지문";
-                    const downloadFileName = selectedPassages.length > 1 ? `수업노트_선택된_지문들.docx` : `수업노트_${firstSelectedTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.docx`;
+                    const downloadFileName = selectedPassages.length > 1 ? `수업노트_선택된_지문들.docx` : `수업노트_${firstSelectedTitle.replace(/[^a-zA-Z0-9가-힣\s]/g, '_').replace(/\s+/g, '_')}.docx`;
                     link.download = downloadFileName;
                     document.body.appendChild(link);
                     link.click(); 
@@ -693,36 +765,36 @@
                         items: {
                             type: "OBJECT",
                             properties: {
-                                english: { "type": "STRING", "description": "A key English vocabulary word, idiom, or short essential phrase from the passage. Avoid long clauses." },
+                                english: { "type": "STRING", "description": "A key English vocabulary word, idiom, or short essential phrase from the passage. Avoid long clauses." }, 
                                 korean: { 
                                     "type": "STRING", 
-                                    "description": "The KOREAN REPRESENTATION for the English keyword. For most words, this will be a PURE KOREAN TRANSLATION. For specific English proper nouns or acronyms (e.g., 'ATP', 'Main Street', 'salmonella') that are commonly used as-is in Korean contexts or where a Korean translation is awkward, this field should contain the ORIGINAL ENGLISH TERM. It must exactly match the term used in 'direct_translation_korean' for highlighting."
+                                    "description": "The KOREAN REPRESENTATION for the English keyword. For most words, this will be a PURE KOREAN TRANSLATION. For specific English proper nouns or acronyms (e.g., 'ATP', 'Main Street', 'salmonella') that are commonly used as-is in Korean contexts or where a Korean translation is awkward, this field should contain the ORIGINAL ENGLISH TERM. It must exactly match the term used in 'direct_translation_korean' for highlighting." 
                                 }
                             },
                             required: ["english", "korean"]
                         },
-                        description: "List of 20 key English vocabulary items. For each, 'korean' field is either its PURE KOREAN translation or the original ENGLISH TERM if it's a proper noun/acronym used as-is in the 'direct_translation_korean'."
+                        description: "List of 20 key English vocabulary items. For each, 'korean' field is either its PURE KOREAN translation or the original ENGLISH TERM if it's a proper noun/acronym used as-is in the 'direct_translation_korean'." 
                     },
                     free_translation_korean: {
                         type: "STRING",
-                        description: "Natural Korean free translation (의역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. Focus on conveying the meaning naturally in Korean, even if it means restructuring sentences."
+                        description: "Natural Korean free translation (의역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. Focus on conveying the meaning naturally in Korean, even if it means restructuring sentences." 
                     },
                     direct_translation_korean: { 
                         type: "STRING",
-                        description: "Literal Korean direct translation (직역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. This field is primarily for internal consistency with 'keywords.korean' and will NOT be displayed in the final document. It should be PURE KOREAN, but may include English proper nouns/acronyms if their Korean translation is awkward AND they are also listed with the English term in 'keywords.korean'. NO HTML-like tags."
+                        description: "Literal Korean direct translation (직역) of ONLY THE MAIN BODY of the passage, EXCLUDING any titles/headers. This field is primarily for internal consistency with 'keywords.korean' and will NOT be displayed in the final document. It should be PURE KOREAN, but may include English proper nouns/acronyms if their Korean translation is awkward AND they are also listed with the English term in 'keywords.korean'. NO HTML-like tags." 
                     },
                     theme: {
                         type: "OBJECT",
                         properties: {
-                            english: { "type": "STRING", "description": "Concise English theme of THE MAIN BODY of the passage." },
-                            korean: { "type": "STRING", "description": "Concise Korean theme of THE MAIN BODY of the passage." }
+                            english: { "type": "STRING", "description": "Concise English theme of THE MAIN BODY of the passage." }, 
+                            korean: { "type": "STRING", "description": "Concise Korean theme of THE MAIN BODY of the passage." } 
                         },
                         required: ["english", "korean"]
                     },
                     hashtags: { 
                         type: "ARRAY",
                         items: { "type": "STRING" },
-                        description: "An array of exactly 10 unique hashtag strings derived from the 10 MOST IMPORTANT English words/phrases from the 'keywords' list (which are from THE MAIN BODY). Prefix each with '#'. e.g., #importantKeyword."
+                        description: "An array of exactly 10 unique hashtag strings derived from the 10 MOST IMPORTANT English words/phrases from the 'keywords' list (which are from THE MAIN BODY). Prefix each with '#'. e.g., #importantKeyword." 
                     },
                     quiz1: {
                         type: "OBJECT",
@@ -734,7 +806,7 @@
                             options: {
                                 type: "ARRAY",
                                 items: { "type": "STRING" },
-                                description: "Array of 5 string options in ENGLISH for quiz 1, generated according to the detailed prompt for quiz1.options." // Reference to detailed prompt
+                                description: "Array of 5 string options in ENGLISH for quiz 1, generated according to the detailed prompt for quiz1.options." 
                             },
                             false_statement_index: { 
                                 type: "INTEGER", 
@@ -742,7 +814,7 @@
                             },
                             explanation: { 
                                 "type": "STRING", 
-                                "description": "A CONCISE explanation in KOREAN for quiz 1, as per the detailed prompt for quiz1.explanation." // Reference to detailed prompt
+                                "description": "A CONCISE explanation in KOREAN for quiz 1, as per the detailed prompt for quiz1.explanation." 
                             }
                         },
                         required: ["question", "options", "false_statement_index", "explanation"]
@@ -756,27 +828,27 @@
                             },
                             summary_sentence_template: { 
                                 type: "STRING", 
-                                description: "A concise summary sentence STRICTLY IN ENGLISH ONLY, as per the detailed prompt for quiz2.summary_sentence_template." // Reference to detailed prompt
+                                description: "A concise summary sentence STRICTLY IN ENGLISH ONLY, as per the detailed prompt for quiz2.summary_sentence_template." 
                             },
                             blank_options: {
                                 type: "ARRAY",
                                 items: {
                                     type: "OBJECT",
                                     properties: {
-                                        A: { "type": "STRING", "description": "A single ENGLISH word for blank A from 'keywords.english'." },
-                                        B: { "type": "STRING", "description": "A single ENGLISH word for blank B from 'keywords.english'." }
+                                        A: { "type": "STRING", "description": "A single ENGLISH word for blank A from 'keywords.english'." }, 
+                                        B: { "type": "STRING", "description": "A single ENGLISH word for blank B from 'keywords.english'." } 
                                     },
                                     required: ["A", "B"]
                                 },
-                                description: "Array of 5 pairs of single ENGLISH words for blanks (A) and (B), as per the detailed prompt for quiz2.blank_options." // Reference to detailed prompt
+                                description: "Array of 5 pairs of single ENGLISH words for blanks (A) and (B), as per the detailed prompt for quiz2.blank_options." 
                             },
                             correct_pair_index: { 
                                 type: "INTEGER", 
-                                description: "0-indexed integer indicating the correct English word pair."
+                                description: "0-indexed integer indicating the correct English word pair." 
                             },
                             explanation: { 
                                 "type": "STRING", 
-                                "description": "A CONCISE explanation in KOREAN for quiz 2, as per the detailed prompt for quiz2.explanation." // Reference to detailed prompt
+                                "description": "A CONCISE explanation in KOREAN for quiz 2, as per the detailed prompt for quiz2.explanation." 
                             }
                         },
                         required: ["question_text", "summary_sentence_template", "blank_options", "correct_pair_index", "explanation"]
@@ -832,6 +904,8 @@ Provide JSON output only.`;
                     responseSchema: schema
                 }
             };
+            // Updated API URL to use gemini-2.5-flash-preview-05-20
+            // gemini-2.5-flash-preview-05-20를 사용하도록 API URL 업데이트
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${userApiKey}`; 
 
             try {
@@ -860,13 +934,13 @@ Provide JSON output only.`;
                                 .replace(/\*\*/g, "")    
                                 .replace(/\s+/g, ' ').trim(); 
                         } else {
-                            console.warn("'direct_translation_korean' field is missing or null in AI response. Setting to empty string.");
+                            console.warn("'direct_translation_korean' field is missing or null in AI response. Setting to empty string."); 
                             parsedJson.direct_translation_korean = ""; 
                         }
 
                         if (!parsedJson.keywords || !Array.isArray(parsedJson.keywords)) {
-                            console.error("CRITICAL: AI response for 'keywords' is not an array or is missing altogether.", parsedJson.keywords);
-                            throw new Error("AI response is critically flawed: 'keywords' field is not an array or is missing.");
+                            console.error("CRITICAL: AI response for 'keywords' is not an array or is missing altogether.", parsedJson.keywords); 
+                            throw new Error("AI response is critically flawed: 'keywords' field is not an array or is missing."); 
                         }
 
                         const originalKeywords = parsedJson.keywords; 
@@ -878,14 +952,14 @@ Provide JSON output only.`;
                             if (!kw || typeof kw !== 'object' ||
                                 !kw.english || typeof kw.english !== 'string' || kw.english.trim() === "" ||
                                 !kw.korean || typeof kw.korean !== 'string' || kw.korean.trim() === "") {
-                                console.warn("Invalid keyword structure (missing/empty/wrong type for english/korean fields):", kw);
+                                console.warn("Invalid keyword structure (missing/empty/wrong type for english/korean fields):", kw); 
                                 structuralErrors++;
                                 continue; 
                             }
 
                             const KOREAN_OR_PROPER_NOUN_REGEX = /^[가-힣ㄱ-ㅎㅏ-ㅣ\s\d~!?.,()\[\]'"‘’“”a-zA-Z]*$/;
                             if (!KOREAN_OR_PROPER_NOUN_REGEX.test(kw.korean)) {
-                                console.warn(`Invalid characters in 'korean' field (neither Korean nor allowed English/symbols): English='${kw.english}', Korean='${kw.korean}'`);
+                                console.warn(`Invalid characters in 'korean' field (neither Korean nor allowed English/symbols): English='${kw.english}', Korean='${kw.korean}'`); 
                                 contentErrors++;
                                 continue;
                             }
@@ -895,61 +969,60 @@ Provide JSON output only.`;
                         parsedJson.keywords = validKeywords; 
 
                         if (structuralErrors > 0) {
-                            console.warn(`Removed ${structuralErrors} keywords due to structural issues.`);
+                            console.warn(`Removed ${structuralErrors} keywords due to structural issues.`); 
                         }
                         if (contentErrors > 0) {
-                            console.warn(`Removed ${contentErrors} keywords due to invalid characters in 'korean' field.`);
+                            console.warn(`Removed ${contentErrors} keywords due to invalid characters in 'korean' field.`); 
                         }
 
                         if (parsedJson.keywords.length === 0) {
                             if (originalKeywords.length > 0) {
-                                console.error("All keywords provided by AI were invalid. Original count:", originalKeywords.length, "Original keywords:", originalKeywords);
-                                throw new Error("AI provided keywords, but all failed validation. Check console for details.");
+                                console.error("All keywords provided by AI were invalid. Original count:", originalKeywords.length, "Original keywords:", originalKeywords); 
+                                throw new Error("AI provided keywords, but all failed validation. Check console for details."); 
                             } else { 
-                                console.error("AI returned an empty 'keywords' array.");
-                                throw new Error("AI returned no keywords. Keywords are required for processing.");
+                                console.error("AI returned an empty 'keywords' array."); 
+                                throw new Error("AI returned no keywords. Keywords are required for processing."); 
                             }
                         }
                         
                         if (!parsedJson.hashtags || !Array.isArray(parsedJson.hashtags) || parsedJson.hashtags.length !== 10 || !parsedJson.hashtags.every(h => typeof h === 'string' && h.startsWith('#'))) {
-                            console.warn("AI returned invalid or incorrect number/structure for hashtags. Expected 10 hashtags starting with #.", parsedJson.hashtags);
+                            console.warn("AI returned invalid or incorrect number/structure for hashtags. Expected 10 hashtags starting with #.", parsedJson.hashtags); 
                             if (!Array.isArray(parsedJson.hashtags) || !parsedJson.hashtags.every(h => typeof h === 'string' && h.startsWith('#'))) {
-                                console.warn("Completely invalid hashtags structure. Defaulting to empty array for hashtags.");
+                                console.warn("Completely invalid hashtags structure. Defaulting to empty array for hashtags."); 
                                 parsedJson.hashtags = []; 
                             } else if (parsedJson.hashtags.length !== 10) {
-                                console.warn(`AI provided ${parsedJson.hashtags.length} hashtags instead of 10. Using the provided ones and attempting to take the first 10 if more, or using as is if less.`);
+                                console.warn(`AI provided ${parsedJson.hashtags.length} hashtags instead of 10. Using the provided ones and attempting to take the first 10 if more, or using as is if less.`); 
                                 parsedJson.hashtags = parsedJson.hashtags.slice(0,10); 
                             }
                         }
                         if (!parsedJson.quiz1 || typeof parsedJson.quiz1.question !== 'string' || !parsedJson.quiz1.explanation) { 
-                             console.error("AI did not return all required fields for quiz1 or 'question' is not a string:", parsedJson.quiz1);
-                            throw new Error("AI response is missing required fields for quiz1 or 'question' field is invalid.");
+                             console.error("AI did not return all required fields for quiz1 or 'question' is not a string:", parsedJson.quiz1); 
+                            throw new Error("AI response is missing required fields for quiz1 or 'question' field is invalid."); 
                         }
                          if (!parsedJson.quiz2 || typeof parsedJson.quiz2.question_text !== 'string' || !parsedJson.quiz2.explanation || typeof parsedJson.quiz2.summary_sentence_template !== 'string') { 
-                             console.error("AI did not return all required fields for quiz2 or 'question_text'/'summary_sentence_template' is not a string:", parsedJson.quiz2);
-                            throw new Error("AI response is missing required fields for quiz2 or 'question_text'/'summary_sentence_template' field is invalid.");
+                             console.error("AI did not return all required fields for quiz2 or 'question_text'/'summary_sentence_template' is not a string:", parsedJson.quiz2); 
+                            throw new Error("AI response is missing required fields for quiz2 or 'question_text'/'summary_sentence_template' field is invalid."); 
                         }
 
-                        // Client-side check for Korean characters in summary_sentence_template
                         if (parsedJson.quiz2 && typeof parsedJson.quiz2.summary_sentence_template === 'string') {
                             const summaryText = parsedJson.quiz2.summary_sentence_template;
                             const koreanRegex = /[ㄱ-ㅎㅏ-ㅣ가-힣]/;
                             if (koreanRegex.test(summaryText)) {
-                                console.warn(`AI COMPLIANCE WARNING: quiz2.summary_sentence_template was explicitly instructed to be in ENGLISH ONLY, but contains Korean characters. Text received: "${summaryText}"`);
+                                console.warn(`AI COMPLIANCE WARNING: quiz2.summary_sentence_template was explicitly instructed to be in ENGLISH ONLY, but contains Korean characters. Text received: "${summaryText}"`); 
                             }
                         }
                         
                         return parsedJson;
                     } catch (e) { 
-                        console.error("Error processing AI response JSON or validating data structure:", e.message, "\nRaw JSON Text:", jsonText);
-                        throw new Error(`AI returned invalid JSON or data structure: ${e.message}`);
+                        console.error("Error processing AI response JSON or validating data structure:", e.message, "\nRaw JSON Text:", jsonText); 
+                        throw new Error(`AI returned invalid JSON or data structure: ${e.message}`); 
                     }
                 } else {
-                    console.error("Unexpected AI response structure (no candidates or parts):", result);
-                    throw new Error("AI response structure was unexpected or content was missing.");
+                    console.error("Unexpected AI response structure (no candidates or parts):", result); 
+                    throw new Error("AI response structure was unexpected or content was missing."); 
                 }
             } catch (error) { 
-                console.error("Error calling AI API:", error);
+                console.error("Error calling AI API:", error); 
                 throw error; 
             }
         }
@@ -975,7 +1048,6 @@ Provide JSON output only.`;
             if (!text || text.trim() === "") { 
                 return [new TextRun({ text: "", font: baseFont, size: bodyFontSize, color: "000000" })]; 
             }
-            // Ensure keywordDetails is an array and filter out invalid entries
             const validKeywordDetails = (Array.isArray(keywordDetails) ? keywordDetails : []).filter(kd => 
                 kd && 
                 kd.english && typeof kd.english === 'string' && kd.english.trim() !== "" &&
@@ -987,7 +1059,6 @@ Provide JSON output only.`;
             }
 
             const englishKeywordColorMap = new Map();
-            // Use up to 20 keywords for highlighting, cycling through rainbowColors
             validKeywordDetails.slice(0, 20).forEach((kd, i) => { 
                 englishKeywordColorMap.set(kd.english.toLowerCase(), rainbowColors[i % rainbowColors.length]);
             });
@@ -1000,74 +1071,65 @@ Provide JSON output only.`;
                         searchTerms.push({
                             text: kd.english, 
                             color: color, 
-                            font: highlightFontForEnglish // This should be the English font
+                            font: highlightFontForEnglish 
                         });
                     }
                 });
-            } else { // For Korean text (직역), use kd.korean for searching
+            } else { 
                 validKeywordDetails.forEach(kd => {
-                    const color = englishKeywordColorMap.get(kd.english.toLowerCase()); // Color is still based on English keyword
+                    const color = englishKeywordColorMap.get(kd.english.toLowerCase()); 
                     if (color) { 
                         searchTerms.push({
-                            text: kd.korean, // Search for the Korean equivalent
+                            text: kd.korean, 
                             color: color, 
-                            font: highlightFontForKorean // This should be the Korean font
+                            font: highlightFontForKorean 
                         });
                     }
                 });
             }
             
-            // Sort by length to match longer phrases first
             searchTerms = searchTerms.sort((a, b) => b.text.length - a.text.length);
 
             if (searchTerms.length === 0) {
                 return [new TextRun({ text: text, font: baseFont, size: bodyFontSize, color: "000000" })]; 
             }
             
-            // Create a regex that includes all search terms.
-            // Escape special characters in search terms for regex.
-            const regexFlags = isEnglishPassage ? 'gi' : 'g'; // Case-insensitive for English, case-sensitive for Korean (can be adjusted)
+            const regexFlags = isEnglishPassage ? 'gi' : 'g'; 
             const keywordRegex = new RegExp(`(${searchTerms.map(st => st.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, regexFlags);
             
             let match;
             const allMatches = [];
-            // Find all occurrences and store them with their original casing and term object
             while ((match = keywordRegex.exec(text)) !== null) {
-                // Find the corresponding searchTerm object, sensitive to the passage language
                 const matchedObject = searchTerms.find(st => isEnglishPassage ? st.text.toLowerCase() === match[0].toLowerCase() : st.text === match[0]);
                 if (matchedObject) {
                     allMatches.push({ index: match.index, matchedText: match[0], termObject: matchedObject });
                 }
             }
-            // Sort matches by index to process them in order
             allMatches.sort((a, b) => a.index - b.index); 
 
             for (const currentMatch of allMatches) {
-                if (currentMatch.index < lastIndex) continue; // Skip overlapping matches already handled
+                if (currentMatch.index < lastIndex) continue; 
 
                 const matchedTermObject = currentMatch.termObject;
 
-                // Add text before the current match
                 if (currentMatch.index > lastIndex) {
                     runs.push(new TextRun({ text: text.substring(lastIndex, currentMatch.index), font: baseFont, size: bodyFontSize, color: "000000" })); 
                 }
                 
-                // Add the highlighted keyword
                 if (matchedTermObject) { 
                     runs.push(new TextRun({
-                        text: currentMatch.matchedText, // Use the original matched text to preserve casing
+                        text: currentMatch.matchedText, 
                         font: matchedTermObject.font, 
                         color: matchedTermObject.color, 
                         size: bodyFontSize, 
                         bold: true
                     }));
-                } else { // Fallback, should not happen if matchedObject is always found
+                } else { 
                      runs.push(new TextRun({ text: currentMatch.matchedText, font: baseFont, size: bodyFontSize, color: "000000" })); 
                 }
                 lastIndex = currentMatch.index + currentMatch.matchedText.length;
             }
 
-            // Add any remaining text after the last match
             if (lastIndex < text.length) {
                 runs.push(new TextRun({ text: text.substring(lastIndex), font: baseFont, size: bodyFontSize, color: "000000" })); 
             }
@@ -1075,16 +1137,6 @@ Provide JSON output only.`;
             return runs.length > 0 ? runs : [new TextRun({ text: text, font: baseFont, size: bodyFontSize, color: "000000" })]; 
         }
 
-        /**
-         * Creates an array of DOCX elements (Tables, Paragraphs) for a single page.
-         * @param {string} passageBody - The main English passage text.
-         * @param {object} aiData - The AI-generated data for the passage.
-         * @param {string} docTitle - The title of the passage.
-         * @param {string} fontEnglish - The English font name.
-         * @param {string} fontKorean - The Korean font name.
-         * @param {number} lineSpacing - The default line spacing value for the page.
-         * @returns {Array<Table|Paragraph>} An array of DOCX elements for the page.
-         */
         function createPageContentForDocx(passageBody, aiData, docTitle, fontEnglish, fontKorean, lineSpacing) {
             const finalKeywordDetails = aiData.keywords ? aiData.keywords.slice(0, 20) : []; 
             const titleFontSize = 22; 
@@ -1096,7 +1148,7 @@ Provide JSON output only.`;
             const quizAnswerKoreanFontSize = 18; 
             const quizLineSpacing = Math.round(240 * 0.9); 
 
-            const quizNumbering = ['①', '②', '③', '④', '⑤']; // This is for Quiz 2 options if needed, Quiz 1 options should come with numbering from AI
+            const quizNumbering = ['①', '②', '③', '④', '⑤']; 
 
             const pageWidthInTwips = convertInchesToTwip(8.27); 
             const pageMarginInTwips = cmToTwip(1.5); 
@@ -1228,7 +1280,6 @@ Provide JSON output only.`;
                 }),
                 ...(aiData.quiz1.options || []).map((opt, index) => new Paragraph({  
                     children: [
-                        // MODIFIED: Removed explicit numbering, assuming AI provides it in 'opt'
                         new TextRun({text: `   ${opt}`, font: fontEnglish, size: quiz1OptionFontSize}), 
                         index === aiData.quiz1.false_statement_index ? new TextRun({text: " (정답)", font: fontKorean, size: quiz1OptionFontSize, color: "FF0000", italics: true}) : new TextRun({text:""}) 
                     ],
@@ -1251,7 +1302,7 @@ Provide JSON output only.`;
                 new Paragraph({ 
                     children: [
                         new TextRun({
-                            text: `   "${aiData.quiz2.summary_sentence_template || "The summary emphasizing {A} and {B} is missing."}"`,
+                            text: `   "${aiData.quiz2.summary_sentence_template || "The summary emphasizing {A} and {B} is missing."}"`, 
                             font: fontEnglish, 
                             size: quiz2SummarSentenceFontSize 
                         })
